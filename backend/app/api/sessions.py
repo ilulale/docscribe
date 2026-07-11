@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from app.models.doctor import Doctor
 from app.models.note import Note
 from app.models.patient import Patient
 from app.models.session import Session, SessionStatus
+from app.schemas.note import NoteResponse, NoteUpdate
 from app.schemas.session import (
     AudioUploadResponse,
     SessionCreate,
@@ -17,7 +18,8 @@ from app.schemas.session import (
     SessionResponse,
     SessionStatusResponse,
 )
-from app.services.processing import process_session
+from app.services.openrouter import generate_soap
+from app.services.processing import _parse_soap_json, process_session
 from app.services.storage import generate_presigned_upload_url, get_status_progress
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -171,3 +173,115 @@ async def get_session(
         note_soap_json=note.soap_json if note else None,
         note_is_signed=note.is_signed if note else None,
     )
+
+
+async def _get_session_and_note(
+    session_id: int,
+    doctor: Doctor,
+    db: AsyncSession,
+) -> tuple[Session, Note | None]:
+    result = await db.execute(
+        select(Session).where(Session.id == session_id, Session.doctor_id == doctor.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    note_result = await db.execute(select(Note).where(Note.session_id == session.id))
+    note = note_result.scalar_one_or_none()
+    return session, note
+
+
+@router.get("/{session_id}/note", response_model=NoteResponse)
+async def get_note(
+    session_id: int,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    session, note = await _get_session_and_note(session_id, doctor, db)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    return note
+
+
+@router.put("/{session_id}/note", response_model=NoteResponse)
+async def update_note(
+    session_id: int,
+    body: NoteUpdate,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    session, note = await _get_session_and_note(session_id, doctor, db)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if note.is_signed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a signed note")
+
+    if body.transcript is not None:
+        note.transcript = body.transcript
+    if body.soap_json is not None:
+        note.soap_json = body.soap_json
+
+    await db.commit()
+    await db.refresh(note)
+    return note
+
+
+@router.post("/{session_id}/sign", response_model=NoteResponse)
+async def sign_note(
+    session_id: int,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    session, note = await _get_session_and_note(session_id, doctor, db)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if note.is_signed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note is already signed")
+
+    note.is_signed = True
+    note.signed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(note)
+    return note
+
+
+@router.post("/{session_id}/regenerate", response_model=NoteResponse)
+async def regenerate_note(
+    session_id: int,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    session, note = await _get_session_and_note(session_id, doctor, db)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if note.is_signed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot regenerate a signed note")
+    if not note.transcript:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No transcript to regenerate from")
+
+    try:
+        soap_result = generate_soap(note.transcript)
+        note.soap_json = _parse_soap_json(soap_result.content)
+        note.signed_soap_text = soap_result.content
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SOAP generation failed: {e}",
+        )
+
+    await db.commit()
+    await db.refresh(note)
+    return note
+
+
+@router.get("/{session_id}/note/pdf")
+async def get_note_pdf(
+    session_id: int,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    session, note = await _get_session_and_note(session_id, doctor, db)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    return {"detail": "PDF generation not yet implemented"}
