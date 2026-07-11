@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_doctor
 from app.database import get_db
 from app.models.doctor import Doctor
+from app.models.letterhead import DoctorLetterhead
 from app.models.note import Note
 from app.models.patient import Patient
 from app.models.session import Session, SessionStatus
@@ -19,6 +20,7 @@ from app.schemas.session import (
     SessionStatusResponse,
 )
 from app.services.openrouter import generate_soap
+from app.services.pdf import generate_pdf
 from app.services.processing import _parse_soap_json, process_session
 from app.services.storage import generate_presigned_upload_url, get_status_progress
 
@@ -284,4 +286,46 @@ async def get_note_pdf(
     session, note = await _get_session_and_note(session_id, doctor, db)
     if not note:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    return {"detail": "PDF generation not yet implemented"}
+    if not note.soap_json:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No SOAP data to generate PDF")
+
+    letterhead_result = await db.execute(
+        select(DoctorLetterhead).where(DoctorLetterhead.doctor_id == doctor.id)
+    )
+    letterhead = letterhead_result.scalar_one_or_none()
+
+    letterhead_dict = {}
+    logo_path = None
+    if letterhead:
+        letterhead_dict = {
+            "clinic_name": letterhead.clinic_name,
+            "doctor_qualifications": letterhead.doctor_qualifications,
+            "address": letterhead.address,
+            "phone": letterhead.phone,
+            "email": letterhead.email,
+            "website": letterhead.website,
+            "registration_numbers": letterhead.registration_numbers,
+            "opd_hours": letterhead.opd_hours,
+        }
+        logo_path = letterhead.logo_path
+
+    try:
+        pdf_bytes = generate_pdf(
+            soap_json=note.soap_json,
+            doctor_name=doctor.name,
+            letterhead=letterhead_dict,
+            logo_path=logo_path,
+            is_signed=note.is_signed,
+            signed_at=note.signed_at,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PDF generation failed: {e}",
+        )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="note_{session_id}.pdf"'},
+    )
