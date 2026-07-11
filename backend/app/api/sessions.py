@@ -17,6 +17,7 @@ from app.schemas.session import (
     SessionResponse,
     SessionStatusResponse,
 )
+from app.services.processing import process_session
 from app.services.storage import generate_presigned_upload_url, get_status_progress
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -58,6 +59,8 @@ async def upload_audio(
     session.audio_path = object_name
     session.status = SessionStatus.pending
     await db.commit()
+
+    process_session.delay(session.id)
 
     return AudioUploadResponse(upload_url=upload_url, session_id=session.id)
 
@@ -106,6 +109,9 @@ async def retry_session(
     session.error_message = None
     await db.commit()
     await db.refresh(session)
+
+    process_session.delay(session.id)
+
     return session
 
 

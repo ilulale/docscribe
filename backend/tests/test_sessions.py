@@ -84,13 +84,18 @@ async def test_upload_audio(client, auth_headers, patient):
     create_resp = await client.post("/api/sessions", json={"patient_id": patient.id}, headers=auth_headers)
     session_id = create_resp.json()["id"]
 
-    with patch("app.api.sessions.generate_presigned_upload_url") as mock_url:
+    with (
+        patch("app.api.sessions.generate_presigned_upload_url") as mock_url,
+        patch("app.api.sessions.process_session") as mock_process,
+    ):
         mock_url.return_value = ("http://minio/presigned-url", "sessions/1/audio.mp3")
+        mock_process.delay = MagicMock()
         resp = await client.post(f"/api/sessions/{session_id}/audio", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "upload_url" in data
         assert data["session_id"] == session_id
+        mock_process.delay.assert_called_once_with(session_id)
 
 
 async def test_upload_audio_not_found(client, auth_headers):
@@ -128,10 +133,13 @@ async def test_retry_session(client, auth_headers, patient, doctor):
         await db.refresh(session)
         session_id = session.id
 
-    resp = await client.post(f"/api/sessions/{session_id}/retry", headers=auth_headers)
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "pending"
-    assert resp.json()["error_message"] is None
+    with patch("app.api.sessions.process_session") as mock_process:
+        mock_process.delay = MagicMock()
+        resp = await client.post(f"/api/sessions/{session_id}/retry", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending"
+        assert resp.json()["error_message"] is None
+        mock_process.delay.assert_called_once_with(session_id)
 
 
 async def test_retry_non_failed_session(client, auth_headers, patient):
