@@ -262,14 +262,83 @@ async def test_regenerate_note_not_found(client, auth_headers):
     assert resp.status_code == 404
 
 
-async def test_get_note_pdf_placeholder(client, auth_headers, doctor, patient):
+async def test_get_note_pdf(client, auth_headers, doctor, patient):
     session_id, _ = await _create_session_with_note(doctor.id, patient.id)
 
+    with patch("app.api.sessions.generate_pdf") as mock_pdf:
+        mock_pdf.return_value = b"%PDF-1.4 fake pdf content"
+        resp = await client.get(f"/api/sessions/{session_id}/note/pdf", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/pdf"
+        assert "note_" in resp.headers.get("content-disposition", "")
+        assert resp.content.startswith(b"%PDF")
+        mock_pdf.assert_called_once()
+
+
+async def test_get_note_pdf_with_letterhead(client, auth_headers, doctor, patient):
+    from app.models.letterhead import DoctorLetterhead
+
+    session_id, _ = await _create_session_with_note(doctor.id, patient.id)
+
+    async with async_session_factory() as db:
+        lh = DoctorLetterhead(
+            doctor_id=doctor.id,
+            clinic_name="City Clinic",
+            logo_path="letterheads/1/logo.png",
+        )
+        db.add(lh)
+        await db.commit()
+
+    with patch("app.api.sessions.generate_pdf") as mock_pdf:
+        mock_pdf.return_value = b"%PDF-1.4 fake pdf"
+        resp = await client.get(f"/api/sessions/{session_id}/note/pdf", headers=auth_headers)
+        assert resp.status_code == 200
+        call_kwargs = mock_pdf.call_args
+        assert call_kwargs.kwargs["letterhead"]["clinic_name"] == "City Clinic"
+        assert call_kwargs.kwargs["logo_path"] == "letterheads/1/logo.png"
+
+
+async def test_get_note_pdf_signed_note(client, auth_headers, doctor, patient):
+    session_id, _ = await _create_session_with_note(
+        doctor.id, patient.id, is_signed=True
+    )
+
+    with patch("app.api.sessions.generate_pdf") as mock_pdf:
+        mock_pdf.return_value = b"%PDF-1.4 signed"
+        resp = await client.get(f"/api/sessions/{session_id}/note/pdf", headers=auth_headers)
+        assert resp.status_code == 200
+        call_kwargs = mock_pdf.call_args
+        assert call_kwargs.kwargs["is_signed"] is True
+
+
+async def test_get_note_pdf_no_soap(client, auth_headers, doctor, patient):
+    async with async_session_factory() as db:
+        from app.models.session import Session as SessionModel
+
+        session = SessionModel(doctor_id=doctor.id, patient_id=patient.id, status="completed")
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
+
+        note = Note(session_id=session.id, transcript="Hello", soap_json=None)
+        db.add(note)
+        await db.commit()
+        session_id = session.id
+
     resp = await client.get(f"/api/sessions/{session_id}/note/pdf", headers=auth_headers)
-    assert resp.status_code == 200
-    assert "PDF generation not yet implemented" in resp.json()["detail"]
+    assert resp.status_code == 400
+    assert "soap" in resp.json()["detail"].lower()
 
 
 async def test_get_note_pdf_not_found(client, auth_headers):
     resp = await client.get("/api/sessions/9999/note/pdf", headers=auth_headers)
     assert resp.status_code == 404
+
+
+async def test_get_note_pdf_generation_failure(client, auth_headers, doctor, patient):
+    session_id, _ = await _create_session_with_note(doctor.id, patient.id)
+
+    with patch("app.api.sessions.generate_pdf", side_effect=Exception("WeasyPrint error")):
+        resp = await client.get(f"/api/sessions/{session_id}/note/pdf", headers=auth_headers)
+        assert resp.status_code == 500
+        assert "PDF generation failed" in resp.json()["detail"]
