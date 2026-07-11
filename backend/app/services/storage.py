@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 
 from minio import Minio
 from minio.error import S3Error
@@ -43,3 +44,29 @@ def generate_presigned_upload_url(session_id: int, content_type: str = "audio/mp
 
 def get_status_progress(status: str) -> str | None:
     return _status_progress.get(status)
+
+
+def upload_logo(doctor_id: int, filename: str, data: bytes) -> str:
+    client = get_minio_client()
+    ensure_bucket(client)
+
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else "png"
+    object_name = f"letterheads/{doctor_id}/logo.{ext}"
+
+    client.put_object(
+        settings.minio_bucket,
+        object_name,
+        BytesIO(data),
+        length=len(data),
+        content_type=f"image/{ext}",
+    )
+    return object_name
+
+
+def delete_logo(logo_path: str) -> bool:
+    client = get_minio_client()
+    try:
+        client.remove_object(settings.minio_bucket, logo_path)
+        return True
+    except S3Error:
+        return False
