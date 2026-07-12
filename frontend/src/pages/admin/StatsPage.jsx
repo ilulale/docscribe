@@ -22,36 +22,53 @@ export default function StatsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading...</div>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+          Loading...
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500">{error}</p>
+      <div className="text-center py-16">
+        <p className="text-red-500 text-sm">{error}</p>
       </div>
     );
   }
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">System Stats</h1>
+  const cards = [
+    { label: "Total Doctors", value: stats?.total_doctors ?? 0 },
+    { label: "Sessions Today", value: stats?.sessions_today ?? 0, accent: true },
+    { label: "Total Sessions", value: stats?.total_sessions ?? 0 },
+  ];
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-500 mb-1">Total Doctors</p>
-          <p className="text-4xl font-bold text-gray-800">{stats?.total_doctors ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-500 mb-1">Sessions Today</p>
-          <p className="text-4xl font-bold text-blue-600">{stats?.sessions_today ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-500 mb-1">Total Sessions</p>
-          <p className="text-4xl font-bold text-gray-800">{stats?.total_sessions ?? 0}</p>
-        </div>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">System Stats</h1>
+        <p className="text-sm text-muted mt-0.5">Platform overview</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        {cards.map((card, i) => (
+          <div
+            key={card.label}
+            className={`card px-5 py-5 opacity-0 animate-slide-up stagger-${i + 1}`}
+          >
+            <p className="text-2xs font-medium uppercase tracking-wider text-muted mb-2">
+              {card.label}
+            </p>
+            <p
+              className={`text-4xl font-bold tabular-nums ${
+                card.accent ? "text-accent" : ""
+              }`}
+            >
+              {card.value}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

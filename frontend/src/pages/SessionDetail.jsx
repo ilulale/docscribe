@@ -5,11 +5,11 @@ import { getSession, getSessionStatus, retrySession } from "../api/endpoints";
 const STEPS = [
   { key: "pending", label: "Uploaded" },
   { key: "transcribing", label: "Transcribing" },
-  { key: "generating_soap", label: "Generating SOAP" },
+  { key: "generating_soap", label: "Generating" },
   { key: "completed", label: "Done" },
 ];
 
-const PROGRESS_LABELS = {
+const PROGRESS_MESSAGES = {
   pending: "Uploading audio...",
   transcribing: "Transcribing audio...",
   generating_soap: "Generating SOAP note...",
@@ -42,13 +42,11 @@ export default function SessionDetail() {
   useEffect(() => {
     let timer;
     let active = true;
-
     async function init() {
       try {
         const data = await getSession(id);
         setSession(data);
         setLoading(false);
-
         if (data.status !== "completed" && data.status !== "failed") {
           timer = setInterval(async () => {
             if (!active) return;
@@ -61,7 +59,6 @@ export default function SessionDetail() {
         setLoading(false);
       }
     }
-
     init();
     return () => {
       active = false;
@@ -75,10 +72,9 @@ export default function SessionDetail() {
     try {
       const data = await retrySession(id);
       setSession((prev) => ({ ...prev, ...data }));
-
-      const timer = setInterval(async () => {
+      const retryTimer = setInterval(async () => {
         const shouldContinue = await poll();
-        if (!shouldContinue) clearInterval(timer);
+        if (!shouldContinue) clearInterval(retryTimer);
       }, 3000);
     } catch (e) {
       setError(e.response?.data?.detail || "Retry failed");
@@ -89,16 +85,19 @@ export default function SessionDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading session...</div>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+          Loading session...
+        </div>
       </div>
     );
   }
 
   if (error && !session) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Link to="/" className="text-blue-600 hover:underline">
+      <div className="text-center py-16">
+        <p className="text-red-500 text-sm mb-4">{error}</p>
+        <Link to="/" className="btn-secondary inline-flex">
           Back to Dashboard
         </Link>
       </div>
@@ -111,90 +110,112 @@ export default function SessionDetail() {
   const currentIdx = STEPS.findIndex((s) => s.key === status);
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Session {id}</h1>
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-sm font-medium text-gray-500 mb-4">
-            Processing Status
-          </h2>
+    <div className="max-w-lg mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Session {id}</h1>
+        <p className="text-sm text-muted mt-0.5">
+          {session?.patient_name || `Patient #${session?.patient_id}`}
+        </p>
+      </div>
 
-          <div className="flex items-center gap-2 mb-6">
-            {STEPS.map((step, i) => {
-              const isDone = i < currentIdx || isCompleted;
-              const isCurrent = i === currentIdx && !isCompleted && !isFailed;
-              return (
-                <div key={step.key} className="flex-1 flex flex-col items-center">
+      <div className="card p-6 animate-slide-up">
+        <p className="section-title mb-5">Processing Status</p>
+
+        <div className="flex items-end gap-1 mb-6">
+          {STEPS.map((step, i) => {
+            const isDone = i < currentIdx || isCompleted;
+            const isCurrent = i === currentIdx && !isCompleted && !isFailed;
+            return (
+              <div key={step.key} className="flex-1 flex flex-col gap-2">
+                <div className="relative h-1.5 rounded-full overflow-hidden bg-surface-0/5">
                   <div
-                    className={`w-full h-2 rounded-full mb-2 ${
+                    className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out ${
                       isDone
-                        ? "bg-green-500"
+                        ? "bg-accent w-full"
                         : isCurrent
-                          ? "bg-blue-500 animate-pulse"
-                          : "bg-gray-200"
+                        ? "bg-accent w-2/3 animate-shimmer"
+                        : "w-0"
                     }`}
                   />
-                  <span
-                    className={`text-xs ${
-                      isCurrent ? "text-blue-600 font-medium" : "text-gray-500"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="text-center">
-            {isFailed ? (
-              <div className="space-y-3">
-                <p className="text-red-600 font-medium">
-                  {session?.error_message || "Processing failed"}
-                </p>
-                {error && <p className="text-red-500 text-sm">{error}</p>}
-                <button
-                  onClick={handleRetry}
-                  disabled={retrying}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                <span
+                  className={`text-2xs ${
+                    isCurrent
+                      ? "text-accent font-medium"
+                      : isDone
+                      ? "text-surface-0/60"
+                      : "text-muted"
+                  }`}
                 >
-                  {retrying ? "Retrying..." : "Retry"}
-                </button>
+                  {step.label}
+                </span>
               </div>
-            ) : isCompleted ? (
-              <div className="space-y-3">
-                <p className="text-green-600 font-medium">
-                  Processing complete!
-                </p>
-                <p className="text-sm text-gray-500">
-                  Redirecting to note editor...
-                </p>
-              </div>
-            ) : (
-              <p className="text-gray-600">
-                {PROGRESS_LABELS[status] || "Processing..."}
-              </p>
-            )}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-sm font-medium text-gray-500 mb-2">Details</h2>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Session ID</dt>
-              <dd className="font-mono">{id}</dd>
+        <div className="text-center py-4">
+          {isFailed ? (
+            <div className="space-y-3">
+              <p className="text-red-500 text-sm font-medium">
+                {session?.error_message || "Processing failed"}
+              </p>
+              {error && (
+                <p className="text-red-400 text-xs">{error}</p>
+              )}
+              <button
+                onClick={handleRetry}
+                disabled={retrying}
+                className="btn-primary"
+              >
+                {retrying ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Retrying...
+                  </span>
+                ) : (
+                  "Retry"
+                )}
+              </button>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Patient</dt>
-              <dd>{session?.patient_name || "N/A"}</dd>
+          ) : isCompleted ? (
+            <div className="space-y-1">
+              <p className="text-accent font-medium text-sm">
+                Processing complete
+              </p>
+              <p className="text-xs text-muted">
+                Redirecting to note editor...
+              </p>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Created</dt>
-              <dd>{session?.created_at ? new Date(session.created_at).toLocaleString() : "N/A"}</dd>
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted">
+              <span className="w-3.5 h-3.5 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+              {PROGRESS_MESSAGES[status] || "Processing..."}
             </div>
-          </dl>
+          )}
         </div>
+      </div>
+
+      <div className="card p-5 animate-slide-up stagger-2">
+        <p className="section-title mb-4">Details</p>
+        <dl className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted">Session ID</dt>
+            <dd className="font-mono text-2xs">{id}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Patient</dt>
+            <dd>{session?.patient_name || "N/A"}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted">Created</dt>
+            <dd>
+              {session?.created_at
+                ? new Date(session.created_at).toLocaleString()
+                : "N/A"}
+            </dd>
+          </div>
+        </dl>
       </div>
     </div>
   );

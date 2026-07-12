@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { listDoctors, createDoctor, toggleDoctorActive } from "../../api/endpoints";
+import {
+  listDoctors,
+  createDoctor,
+  toggleDoctorActive,
+} from "../../api/endpoints";
 
 export default function DoctorsPage() {
   const [doctors, setDoctors] = useState([]);
@@ -48,33 +52,38 @@ export default function DoctorsPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Manage Doctors</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Doctors</h1>
+          <p className="text-sm text-muted mt-0.5">
+            Manage practitioner accounts
+          </p>
+        </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="btn-primary"
         >
           {showCreate ? "Cancel" : "Add Doctor"}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs animate-slide-up">
           {error}
         </div>
       )}
 
       {showCreate && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="font-semibold mb-4">New Doctor</h2>
-          <form onSubmit={handleCreate} className="space-y-4 max-w-md">
+        <div className="card p-5 animate-slide-up">
+          <p className="section-title mb-4">New Doctor</p>
+          <form onSubmit={handleCreate} className="space-y-3 max-w-md">
             <input
               type="text"
-              placeholder="Full Name"
+              placeholder="Full name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
             <input
@@ -82,7 +91,7 @@ export default function DoctorsPage() {
               placeholder="Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
             <input
@@ -90,62 +99,83 @@ export default function DoctorsPage() {
               placeholder="Password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
               minLength={6}
             />
-            <button
-              type="submit"
-              disabled={creating}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {creating ? "Creating..." : "Create Doctor"}
+            <button type="submit" disabled={creating} className="btn-primary">
+              {creating ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Creating...
+                </span>
+              ) : (
+                "Create Doctor"
+              )}
             </button>
           </form>
         </div>
       )}
 
       {loading ? (
-        <div className="text-gray-500">Loading...</div>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+          Loading...
+        </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="card overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Email</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Role</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Status</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
+                  Name
+                </th>
+                <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
+                  Email
+                </th>
+                <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
+                  Role
+                </th>
+                <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
+                  Status
+                </th>
+                <th className="text-right px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border">
               {doctors.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{d.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{d.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      d.is_admin ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"
-                    }`}>
+                <tr
+                  key={d.id}
+                  className="hover:bg-canvas transition-colors duration-100"
+                >
+                  <td className="px-5 py-3.5 text-sm font-medium">{d.name}</td>
+                  <td className="px-5 py-3.5 text-sm text-muted">{d.email}</td>
+                  <td className="px-5 py-3.5">
+                    <span
+                      className={
+                        d.is_admin ? "badge-info" : "badge-neutral"
+                      }
+                    >
                       {d.is_admin ? "Admin" : "Doctor"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      d.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    }`}>
+                  <td className="px-5 py-3.5">
+                    <span
+                      className={
+                        d.is_active ? "badge-success" : "badge-danger"
+                      }
+                    >
                       {d.is_active ? "Active" : "Disabled"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={() => handleToggle(d.id, d.is_active)}
-                      className={`text-sm px-3 py-1 rounded ${
-                        d.is_active
-                          ? "text-red-600 hover:bg-red-50"
-                          : "text-green-600 hover:bg-green-50"
-                      }`}
+                      className={
+                        d.is_active ? "btn-ghost text-red-500" : "btn-ghost text-accent"
+                      }
                     >
                       {d.is_active ? "Disable" : "Enable"}
                     </button>
@@ -154,6 +184,11 @@ export default function DoctorsPage() {
               ))}
             </tbody>
           </table>
+          {doctors.length === 0 && (
+            <div className="p-8 text-center text-sm text-muted">
+              No doctors registered yet
+            </div>
+          )}
         </div>
       )}
     </div>

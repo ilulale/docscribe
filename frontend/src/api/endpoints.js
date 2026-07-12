@@ -53,6 +53,11 @@ export async function getSession(sessionId) {
   return data;
 }
 
+export async function getSessionAudioUrl(sessionId) {
+  const { data } = await client.get(`/sessions/${sessionId}/audio`);
+  return data.audio_url;
+}
+
 export async function listSessions({ status, page = 1, pageSize = 20 } = {}) {
   const params = { page, page_size: pageSize };
   if (status) params.status = status;

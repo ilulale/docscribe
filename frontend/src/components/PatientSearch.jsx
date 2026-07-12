@@ -66,67 +66,78 @@ export default function PatientSearch({ onSelect }) {
           setQuery(e.target.value);
           setShowCreate(false);
         }}
-        className="w-full px-4 py-3 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="input"
       />
       {loading && (
-        <div className="absolute right-3 top-3 text-gray-400">Searching...</div>
+        <div className="absolute right-3 top-2.5 text-2xs text-muted">
+          Searching...
+        </div>
       )}
       {results.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift max-h-60 overflow-y-auto animate-scale-in">
           {results.map((p) => (
             <button
               key={p.id}
               onClick={() => handleSelect(p)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-b-0"
+              className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors border-b border-border-subtle last:border-0 first:rounded-t-xl last:rounded-b-xl"
             >
-              <div className="font-medium">{p.name}</div>
-              <div className="text-sm text-gray-500">ID: {p.id}</div>
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-accent-light flex items-center justify-center text-2xs font-semibold text-accent shrink-0">
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{p.name}</div>
+                  <div className="text-2xs text-muted">ID: {p.id}</div>
+                </div>
+              </div>
             </button>
           ))}
         </div>
       )}
-      {query.trim() && !loading && results.length === 0 && debouncedQuery === query.trim() && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-4">
-          <p className="text-gray-500 mb-3">No patients found matching "{query}"</p>
-          {showCreate ? (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Patient name"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-              />
-              <button
-                onClick={handleCreate}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-              >
-                Create
-              </button>
+      {query.trim() &&
+        !loading &&
+        results.length === 0 &&
+        debouncedQuery === query.trim() && (
+          <div className="absolute z-10 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift p-4 animate-scale-in">
+            <p className="text-xs text-muted mb-3">
+              No patients found matching &ldquo;{query}&rdquo;
+            </p>
+            {showCreate ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Patient name"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  className="input flex-1"
+                  autoFocus
+                />
+                <button onClick={handleCreate} className="btn-primary text-xs">
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreate(false);
+                    setCreateName("");
+                  }}
+                  className="btn-ghost text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
               <button
                 onClick={() => {
-                  setShowCreate(false);
-                  setCreateName("");
+                  setCreateName(query);
+                  setShowCreate(true);
                 }}
-                className="text-gray-500 hover:text-gray-700 px-3 py-2"
+                className="btn-primary text-xs"
               >
-                Cancel
+                Create new patient &ldquo;{query}&rdquo;
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                setCreateName(query);
-                setShowCreate(true);
-              }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Create new patient "{query}"
-            </button>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
     </div>
   );
 }

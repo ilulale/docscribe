@@ -22,7 +22,7 @@ from app.schemas.session import (
 from app.services.openrouter import generate_soap
 from app.services.pdf import generate_pdf
 from app.services.processing import _parse_soap_json, process_session
-from app.services.storage import generate_presigned_upload_url, get_status_progress
+from app.services.storage import generate_presigned_download_url, generate_presigned_upload_url, get_status_progress
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -139,6 +139,26 @@ async def list_sessions(
     query = query.order_by(Session.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/{session_id}/audio")
+async def get_session_audio(
+    session_id: int,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Session).where(Session.id == session_id, Session.doctor_id == doctor.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    if not session.audio_path:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No audio available")
+
+    audio_url = generate_presigned_download_url(session.audio_path)
+    return {"audio_url": audio_url}
 
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)

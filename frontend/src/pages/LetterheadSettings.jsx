@@ -1,15 +1,30 @@
 import { useState, useEffect, useRef } from "react";
-import { getLetterhead, upsertLetterhead, uploadLogo, deleteLogo } from "../api/endpoints";
+import {
+  getLetterhead,
+  upsertLetterhead,
+  uploadLogo,
+  deleteLogo,
+} from "../api/endpoints";
 
 const FIELDS = [
   { key: "clinic_name", label: "Clinic Name", type: "text" },
-  { key: "doctor_qualifications", label: "Qualifications", type: "text", placeholder: "MBBS, MD..." },
+  {
+    key: "doctor_qualifications",
+    label: "Qualifications",
+    type: "text",
+    placeholder: "MBBS, MD...",
+  },
   { key: "address", label: "Address", type: "textarea", rows: 2 },
   { key: "phone", label: "Phone", type: "tel" },
   { key: "email", label: "Email", type: "email" },
   { key: "website", label: "Website", type: "url" },
   { key: "registration_numbers", label: "Registration Numbers", type: "text" },
-  { key: "opd_hours", label: "OPD Hours", type: "text", placeholder: "Mon-Sat: 10:00 AM - 2:00 PM" },
+  {
+    key: "opd_hours",
+    label: "OPD Hours",
+    type: "text",
+    placeholder: "Mon-Sat: 10:00 AM - 2:00 PM",
+  },
 ];
 
 export default function LetterheadSettings() {
@@ -36,11 +51,12 @@ export default function LetterheadSettings() {
           registration_numbers: data.registration_numbers || "",
           opd_hours: data.opd_hours || "",
         });
-        if (data.logo_path) {
-          setLogoPreview(`/api/letterhead/logo?path=${encodeURIComponent(data.logo_path)}`);
-        }
+        if (data.logo_path)
+          setLogoPreview(
+            `/api/letterhead/logo?path=${encodeURIComponent(data.logo_path)}`
+          );
       } catch {
-        // No letterhead yet, start with empty form
+        /* empty form */
       }
       setLoading(false);
     }
@@ -73,9 +89,7 @@ export default function LetterheadSettings() {
       await deleteLogo();
       setLogoPreview(null);
       setLogoFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setSaved(false);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to remove logo");
     }
@@ -85,123 +99,145 @@ export default function LetterheadSettings() {
     setSaving(true);
     setError("");
     try {
+      await upsertLetterhead(form);
       if (logoFile) {
         await uploadLogo(logoFile);
+        setLogoFile(null);
       }
-      await upsertLetterhead(form);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
-      setError(e.response?.data?.detail || "Save failed");
+      setError(e.response?.data?.detail || "Failed to save");
     }
     setSaving(false);
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading letterhead...</div>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+          Loading...
+        </div>
       </div>
     );
-  }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Letterhead Settings</h1>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Letterhead</h1>
+        <p className="text-sm text-muted mt-0.5">
+          Configure your clinic details for PDF exports
+        </p>
+      </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs animate-slide-up">
           {error}
         </div>
       )}
 
       {saved && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          Saved successfully
+        <div className="px-4 py-3 rounded-xl bg-accent-muted border border-accent-light text-accent text-xs animate-slide-up">
+          Settings saved
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Clinic Logo
-          </label>
-          <div className="flex items-start gap-4">
-            <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-gray-50">
-              {logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt="Logo preview"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm">No logo</span>
-              )}
-            </div>
-            <div className="space-y-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                id="logo-upload"
+      <div className="card p-5 animate-slide-up">
+        <p className="section-title mb-4">Logo</p>
+        <div className="flex items-center gap-5">
+          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden shrink-0">
+            {logoPreview ? (
+              <img
+                src={logoPreview}
+                alt="Logo"
+                className="w-full h-full object-contain"
               />
-              <label
-                htmlFor="logo-upload"
-                className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer text-sm"
+            ) : (
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#A1A1AA"
+                strokeWidth="1.5"
+                strokeLinecap="round"
               >
-                Upload Logo
-              </label>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+            )}
+          </div>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary text-xs"
+              >
+                Upload
+              </button>
               {logoPreview && (
                 <button
                   onClick={handleRemoveLogo}
-                  className="block text-sm text-red-500 hover:text-red-700"
+                  className="btn-danger text-xs"
                 >
-                  Remove logo
+                  Remove
                 </button>
               )}
-              <p className="text-xs text-gray-400">PNG, JPG, max 5MB</p>
             </div>
+            <p className="text-2xs text-muted">PNG, JPG up to 5MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FIELDS.map((f) => (
-            <div key={f.key} className={f.type === "textarea" ? "md:col-span-2" : ""}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {f.label}
+      <div className="card p-5 animate-slide-up stagger-2">
+        <p className="section-title mb-4">Details</p>
+        <div className="space-y-4">
+          {FIELDS.map((field) => (
+            <div key={field.key}>
+              <label className="block text-xs font-medium text-surface-0/60 mb-1.5">
+                {field.label}
               </label>
-              {f.type === "textarea" ? (
+              {field.type === "textarea" ? (
                 <textarea
-                  value={form[f.key] || ""}
-                  onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                  placeholder={f.placeholder || ""}
-                  rows={f.rows || 2}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  value={form[field.key] || ""}
+                  onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                  rows={field.rows || 3}
+                  className="input resize-y"
                 />
               ) : (
                 <input
-                  type={f.type}
-                  value={form[f.key] || ""}
-                  onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                  placeholder={f.placeholder || ""}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type={field.type}
+                  value={form[field.key] || ""}
+                  onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                  className="input"
                 />
               )}
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Letterhead"}
-          </button>
-        </div>
+      <div className="flex justify-end">
+        <button onClick={handleSave} disabled={saving} className="btn-primary">
+          {saving ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Saving...
+            </span>
+          ) : (
+            "Save Settings"
+          )}
+        </button>
       </div>
     </div>
   );

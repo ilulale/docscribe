@@ -25,24 +25,45 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+      <div className="w-full max-w-sm animate-slide-up">
+        <div className="text-center mb-8">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-4">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight">Create account</h1>
+          <p className="text-sm text-muted mt-1">Get started with Docscribe</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="text"
-            placeholder="Full Name"
+            placeholder="Full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
             required
+            autoFocus
           />
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
             required
           />
           <input
@@ -50,22 +71,37 @@ export default function RegisterPage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
             required
           />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {error && (
+            <p className="text-red-500 text-xs animate-slide-up">{error}</p>
+          )}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="btn-primary w-full"
           >
-            {loading ? "Creating account..." : "Register"}
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Creating account...
+              </span>
+            ) : (
+              "Create account"
+            )}
           </button>
         </form>
-        <p className="text-center mt-4 text-sm text-gray-600">
+
+        <p className="text-center mt-6 text-xs text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-600 hover:underline">
-            Login
+          <Link
+            to="/login"
+            className="text-accent hover:text-accent-hover font-medium transition-colors"
+          >
+            Sign in
           </Link>
         </p>
       </div>

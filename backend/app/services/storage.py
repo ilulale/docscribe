@@ -42,6 +42,15 @@ def generate_presigned_upload_url(session_id: int, content_type: str = "audio/mp
     return upload_url, object_name
 
 
+def generate_presigned_download_url(object_name: str) -> str:
+    client = get_minio_client()
+    return client.presigned_get_object(
+        settings.minio_bucket,
+        object_name,
+        expires=timedelta(hours=1),
+    )
+
+
 def get_status_progress(status: str) -> str | None:
     return _status_progress.get(status)
 
