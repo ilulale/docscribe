@@ -35,8 +35,8 @@ function SoapSection({ field, label, placeholder, value, onChange, readOnly }) {
             onChange={(e) => onChange(field, e.target.value)}
             readOnly={readOnly}
             placeholder={placeholder}
-            rows={4}
-            className={`w-full px-3 py-2 border rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            rows={8}
+            className={`w-full px-3 py-2 border rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[180px] ${
               readOnly ? "bg-gray-50 cursor-default" : ""
             }`}
           />
@@ -251,12 +251,25 @@ export default function NoteEditor() {
 
       {isSigned && (
         <div className="flex gap-3 justify-end">
-          <Link
-            to={`/sessions/${sessionId}/note/pdf`}
+          <button
+            onClick={async () => {
+              const token = localStorage.getItem("token");
+              const resp = await fetch(`/api/sessions/${sessionId}/note/pdf`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!resp.ok) return;
+              const blob = await resp.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `note_${sessionId}.pdf`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
           >
             Download PDF
-          </Link>
+          </button>
         </div>
       )}
 

@@ -9,6 +9,7 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
+    include=["app.services.processing"],
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",

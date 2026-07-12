@@ -132,6 +132,8 @@ def process_session(self, session_id: int):
             transcript=transcript,
             soap_json=soap_json,
             signed_soap_text=soap_text,
+            prompt_tokens=total_prompt_tokens,
+            completion_tokens=total_completion_tokens,
         )
         db.add(note)
 

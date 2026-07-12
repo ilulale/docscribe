@@ -73,9 +73,13 @@ export default function SessionDetail() {
     setRetrying(true);
     setError("");
     try {
-      await retrySession(id);
-      const data = await getSessionStatus(id);
+      const data = await retrySession(id);
       setSession((prev) => ({ ...prev, ...data }));
+
+      const timer = setInterval(async () => {
+        const shouldContinue = await poll();
+        if (!shouldContinue) clearInterval(timer);
+      }, 3000);
     } catch (e) {
       setError(e.response?.data?.detail || "Retry failed");
     }

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
-import { listSessions } from "../api/endpoints";
+import { listSessions, retrySession } from "../api/endpoints";
 
 const STATUS_STYLES = {
   completed: "bg-green-100 text-green-700",
@@ -13,9 +13,11 @@ const STATUS_STYLES = {
 
 export default function Dashboard() {
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState({ today: 0, pending: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -43,6 +45,18 @@ export default function Dashboard() {
     }
     load();
   }, []);
+
+  const handleRetry = useCallback(async (e, sessionId) => {
+    e.preventDefault();
+    setRetryingId(sessionId);
+    try {
+      await retrySession(sessionId);
+      navigate(`/sessions/${sessionId}`);
+    } catch {
+      // silently fail — user can retry from session detail
+    }
+    setRetryingId(null);
+  }, [navigate]);
 
   return (
     <div>
@@ -81,17 +95,21 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-3">
           {sessions.map((session) => (
-            <Link
+            <div
               key={session.id}
-              to={
-                session.status === "completed"
-                  ? `/sessions/${session.id}/note`
-                  : `/sessions/${session.id}`
-              }
-              className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
-                <div>
+                <div
+                  className="flex-1 cursor-pointer"
+                  onClick={() =>
+                    navigate(
+                      session.status === "completed"
+                        ? `/sessions/${session.id}/note`
+                        : `/sessions/${session.id}`
+                    )
+                  }
+                >
                   <div className="font-medium">Session #{session.id}</div>
                   <div className="text-sm text-gray-500">
                     {new Date(session.created_at).toLocaleDateString("en-IN", {
@@ -103,15 +121,26 @@ export default function Dashboard() {
                     })}
                   </div>
                 </div>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    STATUS_STYLES[session.status] || "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {session.status.replace(/_/g, " ")}
-                </span>
+                <div className="flex items-center gap-2">
+                  {session.status === "failed" && (
+                    <button
+                      onClick={(e) => handleRetry(e, session.id)}
+                      disabled={retryingId === session.id}
+                      className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {retryingId === session.id ? "Retrying..." : "Retry"}
+                    </button>
+                  )}
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      STATUS_STYLES[session.status] || "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {session.status.replace(/_/g, " ")}
+                  </span>
+                </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

@@ -8,6 +8,7 @@ from app.api.deps import get_current_admin
 from app.database import get_db
 from app.models.doctor import Doctor
 from app.models.invoice import Invoice, InvoiceStatus
+from app.models.note import Note
 from app.models.session import Session, SessionStatus
 from app.schemas.admin import (
     CreditsResponse,
@@ -153,20 +154,29 @@ async def get_credits(
     result = await db.execute(select(Doctor).order_by(Doctor.id))
     doctors = result.scalars().all()
 
+    token_query = (
+        select(
+            Session.doctor_id,
+            func.coalesce(func.sum(Note.prompt_tokens), 0).label("prompt"),
+            func.coalesce(func.sum(Note.completion_tokens), 0).label("completion"),
+            func.count(Session.id).label("total_sessions"),
+        )
+        .outerjoin(Note, Note.session_id == Session.id)
+        .group_by(Session.doctor_id)
+    )
+    token_result = await db.execute(token_query)
+    token_rows = {row.doctor_id: row for row in token_result.all()}
+
     credit_usages = []
     for doctor in doctors:
-        sessions_result = await db.execute(
-            select(func.count(Session.id)).where(Session.doctor_id == doctor.id)
-        )
-        total_sessions = sessions_result.scalar() or 0
-
+        row = token_rows.get(doctor.id)
         credit_usages.append(
             DoctorCreditUsage(
                 doctor_id=doctor.id,
                 doctor_name=doctor.name,
-                total_prompt_tokens=0,
-                total_completion_tokens=0,
-                total_sessions=total_sessions,
+                total_prompt_tokens=row.prompt if row else 0,
+                total_completion_tokens=row.completion if row else 0,
+                total_sessions=row.total_sessions if row else 0,
             )
         )
 
