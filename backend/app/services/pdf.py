@@ -46,10 +46,21 @@ def generate_pdf(
     logo_path: str | None = None,
     is_signed: bool = False,
     signed_at: datetime | None = None,
+    template_sections: list[dict] | None = None,
+    pdf_footer: str | None = None,
 ) -> bytes:
     template = _template_env.get_template("note_pdf.html")
 
     logo_b64 = _load_logo_b64(logo_path)
+
+    if template_sections:
+        sections = [
+            (s["key"], s["label"])
+            for s in sorted(template_sections, key=lambda s: s.get("order", 0))
+            if s.get("visible", True)
+        ]
+    else:
+        sections = SOAP_SECTIONS
 
     signed_at_str = None
     if signed_at:
@@ -57,12 +68,13 @@ def generate_pdf(
 
     html_content = template.render(
         soap_json=soap_json,
-        sections=SOAP_SECTIONS,
+        sections=sections,
         doctor_name=doctor_name,
         letterhead=letterhead,
         logo_b64=logo_b64,
         is_signed=is_signed,
         signed_at=signed_at_str,
+        pdf_footer=pdf_footer,
     )
 
     pdf_bytes = HTML(string=html_content).write_pdf()

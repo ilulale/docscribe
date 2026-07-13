@@ -2,12 +2,14 @@ import logging
 from datetime import datetime, timezone
 
 from celery.exceptions import Retry
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session as SyncSession, sessionmaker
 
 from app.celery_app import celery_app
 from app.config import settings
+from app.models.doctor import Doctor
 from app.models.note import Note
+from app.models.report_template import DoctorReportTemplate
 from app.models.session import Session, SessionStatus
 from app.services.openrouter import generate_soap, transcribe_audio
 from app.services.storage import get_minio_client
@@ -35,7 +37,7 @@ def _download_audio(audio_path: str) -> bytes:
         response.release_conn()
 
 
-_SECTION_MAP = {
+_DEFAULT_SECTION_MAP = {
     "SUBJECTIVE": "subjective",
     "OBJECTIVE": "objective",
     "ASSESSMENT": "assessment",
@@ -44,8 +46,15 @@ _SECTION_MAP = {
 }
 
 
-def _parse_soap_json(soap_text: str) -> dict:
-    sections: dict[str, list[str]] = {}
+def _get_section_map(sections: list[dict] | None) -> dict[str, str]:
+    if not sections:
+        return _DEFAULT_SECTION_MAP
+    return {s["label"].upper(): s["key"] for s in sections}
+
+
+def _parse_soap_json(soap_text: str, sections: list[dict] | None = None) -> dict:
+    section_map = _get_section_map(sections)
+    sections_result: dict[str, list[str]] = {}
     current_section: str | None = None
 
     for line in soap_text.split("\n"):
@@ -55,23 +64,22 @@ def _parse_soap_json(soap_text: str) -> dict:
 
         upper = stripped.upper()
         matched_key = None
-        for header, key in _SECTION_MAP.items():
+        for header, key in section_map.items():
             if upper == header or upper.startswith(header + ":"):
                 matched_key = key
                 break
 
         if matched_key is not None:
             current_section = matched_key
-            sections.setdefault(current_section, [])
-            # Handle inline content on the same line as the header
+            sections_result.setdefault(current_section, [])
             if ":" in stripped:
                 after_colon = stripped.split(":", 1)[1].strip()
                 if after_colon:
-                    sections[current_section].append(after_colon)
+                    sections_result[current_section].append(after_colon)
         elif current_section is not None:
-            sections[current_section].append(stripped)
+            sections_result[current_section].append(stripped)
 
-    return {k: "\n".join(v) for k, v in sections.items()}
+    return {k: "\n".join(v) for k, v in sections_result.items()}
 
 
 @celery_app.task(name="process_session", bind=True, max_retries=1)
@@ -109,12 +117,26 @@ def process_session(self, session_id: int):
                 raise self.retry(countdown=60)
             return
 
+        # Load doctor's report template
+        doctor = db.get(Doctor, session.doctor_id)
+        template_result = None
+        if doctor:
+            template_result = db.execute(
+                select(DoctorReportTemplate).where(
+                    DoctorReportTemplate.doctor_id == doctor.id
+                )
+            ).scalar_one_or_none()
+
+        template_sections = None
+        if template_result:
+            template_sections = template_result.sections
+
         # Stage 2: SOAP generation
         session.status = SessionStatus.generating_soap
         db.commit()
 
         try:
-            soap_result = generate_soap(transcript)
+            soap_result = generate_soap(transcript, sections=template_sections)
             soap_text = soap_result.content
             total_prompt_tokens += soap_result.prompt_tokens
             total_completion_tokens += soap_result.completion_tokens
@@ -126,7 +148,7 @@ def process_session(self, session_id: int):
             return
 
         # Save note
-        soap_json = _parse_soap_json(soap_text)
+        soap_json = _parse_soap_json(soap_text, sections=template_sections)
         note = Note(
             session_id=session.id,
             transcript=transcript,

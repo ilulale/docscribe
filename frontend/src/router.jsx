@@ -10,6 +10,7 @@ import SessionDetail from "./pages/SessionDetail";
 import NoteEditor from "./pages/NoteEditor";
 import PatientHistory from "./pages/PatientHistory";
 import LetterheadSettings from "./pages/LetterheadSettings";
+import ReportTemplatePage from "./pages/ReportTemplatePage";
 import DoctorsPage from "./pages/admin/DoctorsPage";
 import InvoicesPage from "./pages/admin/InvoicesPage";
 import CreditsPage from "./pages/admin/CreditsPage";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "sessions/:id/note", element: <NoteEditor /> },
       { path: "patients/:id/history", element: <PatientHistory /> },
       { path: "settings/letterhead", element: <LetterheadSettings /> },
+      { path: "settings/report-template", element: <ReportTemplatePage /> },
       { path: "admin/doctors", element: <DoctorsPage /> },
       { path: "admin/invoices", element: <InvoicesPage /> },
       { path: "admin/credits", element: <CreditsPage /> },

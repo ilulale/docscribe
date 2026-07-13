@@ -165,3 +165,16 @@ export async function getCredits() {
   const { data } = await client.get("/admin/credits");
   return data;
 }
+
+export async function getReportTemplate() {
+  const { data } = await client.get("/report-template");
+  return data;
+}
+
+export async function upsertReportTemplate({ sections, pdf_footer }) {
+  const { data } = await client.post("/report-template", {
+    sections,
+    pdf_footer,
+  });
+  return data;
+}

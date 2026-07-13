@@ -7,6 +7,7 @@ const navItems = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/sessions/new", label: "New Recording" },
   { to: "/settings/letterhead", label: "Letterhead" },
+  { to: "/settings/report-template", label: "Report Template" },
 ];
 
 const adminItems = [

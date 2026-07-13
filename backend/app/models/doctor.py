@@ -21,3 +21,4 @@ class Doctor(Base):
     sessions = relationship("Session", back_populates="doctor", lazy="selectin")
     invoices = relationship("Invoice", back_populates="doctor", lazy="selectin")
     letterhead = relationship("DoctorLetterhead", back_populates="doctor", uselist=False, lazy="selectin")
+    report_template = relationship("DoctorReportTemplate", back_populates="doctor", uselist=False, lazy="selectin")

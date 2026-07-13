@@ -113,8 +113,37 @@ def transcribe_audio(audio_bytes: bytes) -> OpenRouterResponse:
     return call_openrouter(messages)
 
 
-def generate_soap(transcript: str) -> OpenRouterResponse:
+def build_soap_prompt_from_sections(sections: list[dict]) -> str:
+    """Build a dynamic SOAP prompt from template sections."""
+    sorted_sections = sorted(sections, key=lambda s: s.get("order", 0))
+    visible = [s for s in sorted_sections if s.get("visible", True)]
+
+    format_block = "\n\n".join(
+        f"- {s['label'].upper()}:\n  Instructions for the AI: {s.get('prompt_instructions', '')}"
+        for s in visible
+    )
+
+    return f"""You are an expert medical scribe generating a clinical note from a doctor-patient conversation transcript.
+
+You will receive a transcript of a doctor-patient interaction (already translated into English). Convert it into a detailed, professional clinical note following the sections below.
+
+STRICT RULES:
+- Base every statement ONLY on information explicitly present in the transcript. Do NOT infer, assume, or fabricate any clinical detail, vital sign, history, or diagnosis that was not stated.
+- If a section has no corresponding information in the transcript, write "Not discussed" or "Not documented" for that section — do not guess or leave it blank.
+- Use standard clinical terminology and formatting a physician would expect in a medical record.
+- Do not include any commentary, disclaimers, or notes about the AI process itself. Output ONLY the clinical note.
+
+OUTPUT FORMAT:
+{format_block}
+
+Transcript:
+{{transcript}}
+"""
+
+
+def generate_soap(transcript: str, sections: list[dict] | None = None) -> OpenRouterResponse:
+    prompt = build_soap_prompt_from_sections(sections) if sections else SOAP_PROMPT
     messages = [
-        {"role": "user", "content": SOAP_PROMPT.format(transcript=transcript)}
+        {"role": "user", "content": prompt.format(transcript=transcript)}
     ]
     return call_openrouter(messages)
