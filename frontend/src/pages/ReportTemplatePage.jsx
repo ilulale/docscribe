@@ -213,8 +213,8 @@ export default function ReportTemplatePage() {
                 onChange={(e) =>
                   updateSection(idx, "prompt_instructions", e.target.value)
                 }
-                rows={2}
-                className="input resize-y text-xs"
+                rows={4}
+                className="input resize-y text-xs min-h-[80px]"
                 placeholder="What the AI should extract for this section..."
               />
             </div>
