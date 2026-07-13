@@ -13,6 +13,8 @@ class SessionResponse(BaseModel):
     id: int
     doctor_id: int
     patient_id: int
+    patient_name: str | None = None
+    sequence_number: int | None = None
     audio_path: str | None
     duration_seconds: int | None
     status: SessionStatus
@@ -39,6 +41,7 @@ class SessionDetailResponse(BaseModel):
     id: int
     doctor_id: int
     patient_id: int
+    sequence_number: int | None = None
     audio_path: str | None
     duration_seconds: int | None
     status: SessionStatus

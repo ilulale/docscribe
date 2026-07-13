@@ -112,7 +112,7 @@ export default function SessionDetail() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Session {id}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Session {session?.sequence_number ?? id}</h1>
         <p className="text-sm text-muted mt-0.5">
           {session?.patient_name || `Patient #${session?.patient_id}`}
         </p>

@@ -101,7 +101,8 @@ export default function NewSession() {
     try {
       return await createSession(selectedPatient.id);
     } catch (e) {
-      setError(e.response?.data?.detail || "Failed to create session");
+      const detail = e.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Failed to create session");
       return null;
     }
   }
@@ -125,7 +126,9 @@ export default function NewSession() {
       await uploadAudio(session.id, blob);
       navigate(`/sessions/${session.id}`);
     } catch (e) {
-      setError(e.response?.data?.detail || "Upload failed. Please try again.");
+      const detail = e.response?.data?.detail;
+      const msg = typeof detail === "string" ? detail : "Upload failed. Please try again.";
+      setError(msg);
       setUploading(false);
     }
   }
@@ -139,7 +142,7 @@ export default function NewSession() {
         </p>
       </div>
 
-      <div className="card p-5 space-y-4 animate-slide-up">
+      <div className="card p-5 space-y-4">
         <label className="section-title">Patient</label>
         {selectedPatient ? (
           <div className="flex items-center justify-between p-3 bg-canvas rounded-xl">

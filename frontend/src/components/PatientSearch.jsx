@@ -74,7 +74,7 @@ export default function PatientSearch({ onSelect }) {
         </div>
       )}
       {results.length > 0 && (
-        <div className="absolute z-10 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift max-h-60 overflow-y-auto animate-scale-in">
+        <div className="absolute z-50 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift max-h-60 overflow-y-auto animate-scale-in">
           {results.map((p) => (
             <button
               key={p.id}
@@ -98,7 +98,7 @@ export default function PatientSearch({ onSelect }) {
         !loading &&
         results.length === 0 &&
         debouncedQuery === query.trim() && (
-          <div className="absolute z-10 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift p-4 animate-scale-in">
+          <div className="absolute z-50 w-full mt-1.5 bg-white border border-border rounded-xl shadow-lift p-4 animate-scale-in">
             <p className="text-xs text-muted mb-3">
               No patients found matching &ldquo;{query}&rdquo;
             </p>

@@ -4,8 +4,8 @@ import { getCredits } from "../../api/endpoints";
 const USD_TO_INR = 85;
 
 const PRICING = {
-  prompt_per_1m: 0.075,
-  completion_per_1m: 0.3,
+  prompt_per_1m: 0.25,
+  completion_per_1m: 1.50,
 };
 
 function calcCostUsd(promptTokens, completionTokens) {
@@ -122,7 +122,7 @@ export default function CreditsPage() {
 
       <div className="card p-4 flex items-center justify-between animate-slide-up">
         <span className="text-2xs text-muted">
-          Gemini Flash Lite: prompt $0.075/1M, completion $0.30/1M
+          Gemini Flash Lite: prompt $0.25/1M, completion $1.50/1M
         </span>
         <span className="text-sm font-semibold tabular-nums">
           Total: {formatCost(totalCost)}

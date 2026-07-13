@@ -68,8 +68,8 @@ function SoapSection({ field, label, placeholder, value, onChange, readOnly }) {
             onChange={(e) => onChange(field, e.target.value)}
             readOnly={readOnly}
             placeholder={placeholder}
-            rows={8}
-            className={`w-full px-4 py-3 rounded-xl text-sm bg-canvas border border-border resize-y focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-150 min-h-[180px] ${
+            rows={12}
+            className={`w-full px-4 py-3 rounded-xl text-sm bg-canvas border border-border resize-y focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-150 min-h-[280px] ${
               readOnly ? "bg-surface-0/3 cursor-default" : ""
             }`}
           />
@@ -108,9 +108,7 @@ export default function NoteEditor() {
         setSoap(noteData.soap_json || {});
         setTranscript(noteData.transcript || "");
         setSession(sessionData);
-        getSessionAudioUrl(sessionId)
-          .then((url) => setAudioUrl(url))
-          .catch(() => {});
+        setAudioUrl(getSessionAudioUrl(sessionId));
       } catch (e) {
         setError(e.response?.data?.detail || "Failed to load note");
       }
@@ -203,7 +201,7 @@ export default function NoteEditor() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">SOAP Note</h1>
           <p className="text-sm text-muted mt-0.5">
-            Session {sessionId} &mdash;{" "}
+            Session {session?.sequence_number ?? sessionId} &mdash;{" "}
             {session?.patient_name || `Patient #${session?.patient_id}`}
           </p>
         </div>
@@ -286,7 +284,7 @@ export default function NoteEditor() {
                 Loading audio...
               </div>
             )}
-            <div className="text-sm text-surface-0/70 whitespace-pre-wrap max-h-60 overflow-y-auto leading-relaxed">
+            <div className="text-sm text-surface-0/70 whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed">
               {transcript || "No transcript available."}
             </div>
           </div>

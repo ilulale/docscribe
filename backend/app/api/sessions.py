@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_doctor
@@ -13,7 +14,6 @@ from app.models.patient import Patient
 from app.models.session import Session, SessionStatus
 from app.schemas.note import NoteResponse, NoteUpdate
 from app.schemas.session import (
-    AudioUploadResponse,
     SessionCreate,
     SessionDetailResponse,
     SessionResponse,
@@ -22,7 +22,7 @@ from app.schemas.session import (
 from app.services.openrouter import generate_soap
 from app.services.pdf import generate_pdf
 from app.services.processing import _parse_soap_json, process_session
-from app.services.storage import generate_presigned_download_url, generate_presigned_upload_url, get_status_progress
+from app.services.storage import download_audio, get_status_progress, upload_audio as upload_audio_to_storage
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -39,16 +39,22 @@ async def create_session(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
-    session = Session(doctor_id=doctor.id, patient_id=body.patient_id)
+    count_result = await db.execute(
+        select(func.count()).select_from(Session).where(Session.doctor_id == doctor.id)
+    )
+    next_number = count_result.scalar() + 1
+
+    session = Session(doctor_id=doctor.id, patient_id=body.patient_id, sequence_number=next_number)
     db.add(session)
     await db.commit()
     await db.refresh(session)
     return session
 
 
-@router.post("/{session_id}/audio", response_model=AudioUploadResponse)
+@router.post("/{session_id}/audio", response_model=SessionResponse)
 async def upload_audio(
     session_id: int,
+    file: UploadFile = File(...),
     doctor: Doctor = Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -59,14 +65,17 @@ async def upload_audio(
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
-    upload_url, object_name = generate_presigned_upload_url(session_id)
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty audio file")
+
+    object_name = upload_audio_to_storage(session_id, audio_bytes, file.content_type or "audio/webm")
     session.audio_path = object_name
     session.status = SessionStatus.pending
     await db.commit()
 
     process_session.delay(session.id)
-
-    return AudioUploadResponse(upload_url=upload_url, session_id=session.id)
+    return session
 
 
 @router.get("/{session_id}/status", response_model=SessionStatusResponse)
@@ -129,7 +138,11 @@ async def list_sessions(
     doctor: Doctor = Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Session).where(Session.doctor_id == doctor.id)
+    query = (
+        select(Session, Patient.name.label("patient_name"))
+        .join(Patient, Session.patient_id == Patient.id, isouter=True)
+        .where(Session.doctor_id == doctor.id)
+    )
     if session_status:
         query = query.where(Session.status == session_status)
     if date_from:
@@ -138,15 +151,51 @@ async def list_sessions(
         query = query.where(Session.created_at <= date_to)
     query = query.order_by(Session.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
-    return result.scalars().all()
+    return [
+        SessionResponse(
+            id=session.id,
+            doctor_id=session.doctor_id,
+            patient_id=session.patient_id,
+            patient_name=patient_name,
+            sequence_number=session.sequence_number,
+            audio_path=session.audio_path,
+            duration_seconds=session.duration_seconds,
+            status=session.status,
+            error_message=session.error_message,
+            created_at=session.created_at,
+            completed_at=session.completed_at,
+        )
+        for session, patient_name in result.all()
+    ]
 
 
 @router.get("/{session_id}/audio")
 async def get_session_audio(
     session_id: int,
-    doctor: Doctor = Depends(get_current_doctor),
+    token: str | None = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services.auth import decode_token
+
+    if credentials:
+        payload = decode_token(credentials.credentials)
+    elif token:
+        payload = decode_token(token)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    if payload is None or payload.get("type") != "access":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    doctor_id = int(payload["sub"])
+    result = await db.execute(
+        select(Doctor).where(Doctor.id == doctor_id)
+    )
+    doctor = result.scalar_one_or_none()
+    if doctor is None or not doctor.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Doctor not found or inactive")
+
     result = await db.execute(
         select(Session).where(Session.id == session_id, Session.doctor_id == doctor.id)
     )
@@ -157,8 +206,8 @@ async def get_session_audio(
     if not session.audio_path:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No audio available")
 
-    audio_url = generate_presigned_download_url(session.audio_path)
-    return {"audio_url": audio_url}
+    audio_bytes = download_audio(session.audio_path)
+    return Response(content=audio_bytes, media_type="audio/webm")
 
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)

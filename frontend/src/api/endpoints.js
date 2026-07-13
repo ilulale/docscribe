@@ -33,14 +33,12 @@ export async function createSession(patientId) {
 }
 
 export async function uploadAudio(sessionId, audioBlob) {
-  const { data: uploadData } = await client.post(`/sessions/${sessionId}/audio`);
-  const uploadUrl = uploadData.upload_url;
-  await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": "audio/webm" },
-    body: audioBlob,
+  const formData = new FormData();
+  formData.append("file", audioBlob, "recording.webm");
+  const { data } = await client.post(`/sessions/${sessionId}/audio`, formData, {
+    headers: { "Content-Type": undefined },
   });
-  return uploadData;
+  return data;
 }
 
 export async function getSessionStatus(sessionId) {
@@ -53,9 +51,9 @@ export async function getSession(sessionId) {
   return data;
 }
 
-export async function getSessionAudioUrl(sessionId) {
-  const { data } = await client.get(`/sessions/${sessionId}/audio`);
-  return data.audio_url;
+export function getSessionAudioUrl(sessionId) {
+  const token = localStorage.getItem("token");
+  return `/api/sessions/${sessionId}/audio?token=${token}`;
 }
 
 export async function listSessions({ status, page = 1, pageSize = 20 } = {}) {

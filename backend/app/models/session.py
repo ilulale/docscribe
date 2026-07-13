@@ -21,6 +21,7 @@ class Session(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), index=True)
+    sequence_number: Mapped[int] = mapped_column(Integer)
     audio_path: Mapped[str | None] = mapped_column(String(512))
     duration_seconds: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[SessionStatus] = mapped_column(

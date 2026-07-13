@@ -29,6 +29,26 @@ def ensure_bucket(client: Minio) -> None:
         client.make_bucket(settings.minio_bucket)
 
 
+def _externalize_url(url: str) -> str:
+    return url.replace(f"://{settings.minio_endpoint}", "://localhost:9000")
+
+
+def upload_audio(session_id: int, data: bytes, content_type: str = "audio/webm") -> str:
+    client = get_minio_client()
+    ensure_bucket(client)
+
+    object_name = f"sessions/{session_id}/audio.mp3"
+    from io import BytesIO
+    client.put_object(
+        settings.minio_bucket,
+        object_name,
+        BytesIO(data),
+        length=len(data),
+        content_type=content_type,
+    )
+    return object_name
+
+
 def generate_presigned_upload_url(session_id: int, content_type: str = "audio/mpeg") -> tuple[str, str]:
     client = get_minio_client()
     ensure_bucket(client)
@@ -39,16 +59,27 @@ def generate_presigned_upload_url(session_id: int, content_type: str = "audio/mp
         object_name,
         expires=timedelta(hours=1),
     )
-    return upload_url, object_name
+    return _externalize_url(upload_url), object_name
 
 
 def generate_presigned_download_url(object_name: str) -> str:
     client = get_minio_client()
-    return client.presigned_get_object(
+    url = client.presigned_get_object(
         settings.minio_bucket,
         object_name,
         expires=timedelta(hours=1),
     )
+    return _externalize_url(url)
+
+
+def download_audio(object_name: str) -> bytes:
+    client = get_minio_client()
+    response = client.get_object(settings.minio_bucket, object_name)
+    try:
+        return response.read()
+    finally:
+        response.close()
+        response.release_conn()
 
 
 def get_status_progress(status: str) -> str | None:

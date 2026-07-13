@@ -168,11 +168,11 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-surface-0/5 flex items-center justify-center text-2xs font-bold text-muted shrink-0">
-                      {String(session.id).padStart(2, "0")}
+                      {String(session.sequence_number ?? session.id).padStart(2, "0")}
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">
-                        Session #{session.id}
+                        {session.patient_name || `Session #${session.id}`}
                       </div>
                       <div className="text-2xs text-muted">
                         {new Date(session.created_at).toLocaleDateString(
