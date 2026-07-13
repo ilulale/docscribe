@@ -1,9 +1,11 @@
 import base64
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import jinja2
 from weasyprint import HTML
+
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 _template_dir = Path(__file__).parent.parent / "templates"
 _template_env = jinja2.Environment(
@@ -64,7 +66,10 @@ def generate_pdf(
 
     signed_at_str = None
     if signed_at:
-        signed_at_str = signed_at.strftime("%d %B %Y, %I:%M %p")
+        if signed_at.tzinfo is None:
+            signed_at = signed_at.replace(tzinfo=timezone.utc)
+        signed_at_ist = signed_at.astimezone(_IST)
+        signed_at_str = signed_at_ist.strftime("%d %B %Y, %I:%M %p IST")
 
     html_content = template.render(
         soap_json=soap_json,

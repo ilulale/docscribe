@@ -11,6 +11,7 @@ from app.models.doctor import Doctor
 from app.models.letterhead import DoctorLetterhead
 from app.models.note import Note
 from app.models.patient import Patient
+from app.models.report_template import DoctorReportTemplate
 from app.models.session import Session, SessionStatus
 from app.schemas.note import NoteResponse, NoteUpdate
 from app.schemas.session import (
@@ -378,6 +379,13 @@ async def get_note_pdf(
         }
         logo_path = letterhead.logo_path
 
+    template_result = await db.execute(
+        select(DoctorReportTemplate).where(DoctorReportTemplate.doctor_id == doctor.id)
+    )
+    template = template_result.scalar_one_or_none()
+    template_sections = template.sections if template else None
+    pdf_footer = template.pdf_footer if template else None
+
     try:
         pdf_bytes = generate_pdf(
             soap_json=note.soap_json,
@@ -386,6 +394,8 @@ async def get_note_pdf(
             logo_path=logo_path,
             is_signed=note.is_signed,
             signed_at=note.signed_at,
+            template_sections=template_sections,
+            pdf_footer=pdf_footer,
         )
     except Exception as e:
         raise HTTPException(
