@@ -93,8 +93,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    volumes:
-      - ./backend:/app
     deploy:
       resources:
         limits:
@@ -122,8 +120,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
     deploy:
       resources:
         limits:
