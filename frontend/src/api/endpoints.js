@@ -178,6 +178,11 @@ export async function getStats() {
   return data;
 }
 
+export async function reprocessSession(sessionId) {
+  const { data } = await client.post(`/admin/sessions/${sessionId}/reprocess`);
+  return data;
+}
+
 export async function getCredits() {
   const { data } = await client.get("/admin/credits");
   return data;

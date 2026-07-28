@@ -24,7 +24,9 @@ from app.schemas.admin import (
     InvoiceStatusUpdate,
     StatsResponse,
 )
+from app.schemas.session import SessionResponse
 from app.services.auth import hash_password
+from app.services.processing import process_session
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -242,3 +244,39 @@ async def list_models(
 ):
     models = await _fetch_models_from_openrouter()
     return models
+
+
+@router.post("/sessions/{session_id}/reprocess", response_model=SessionResponse)
+async def reprocess_session(
+    session_id: int,
+    admin: Doctor = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Session).where(Session.id == session_id))
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    note_result = await db.execute(select(Note).where(Note.session_id == session.id))
+    note = note_result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if note.is_signed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot reprocess a signed note. Unsign it first.",
+        )
+    if not session.audio_path:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Session has no audio to reprocess",
+        )
+
+    session.status = SessionStatus.pending
+    session.error_message = None
+    await db.commit()
+    await db.refresh(session)
+
+    process_session.delay(session.id)
+
+    return session

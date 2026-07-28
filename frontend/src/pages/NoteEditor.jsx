@@ -7,7 +7,10 @@ import {
   regenerateNote,
   getSession,
   getSessionAudioUrl,
+  getSessionStatus,
+  reprocessSession,
 } from "../api/endpoints";
+import { useAuthStore } from "../stores/authStore";
 
 const SECTIONS = [
   {
@@ -81,6 +84,8 @@ function SoapSection({ field, label, placeholder, value, onChange, readOnly }) {
 
 export default function NoteEditor() {
   const { id: sessionId } = useParams();
+  const doctor = useAuthStore((s) => s.doctor);
+  const isAdmin = doctor?.is_admin;
   const [note, setNote] = useState(null);
   const [soap, setSoap] = useState({});
   const [transcript, setTranscript] = useState("");
@@ -88,6 +93,8 @@ export default function NoteEditor() {
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [showReprocessConfirm, setShowReprocessConfirm] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -95,6 +102,7 @@ export default function NoteEditor() {
   const [session, setSession] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const autoSaveRef = useRef(null);
+  const pollRef = useRef(null);
   const isSigned = note?.is_signed;
 
   useEffect(() => {
@@ -174,6 +182,49 @@ export default function NoteEditor() {
     }
     setRegenerating(false);
   }
+
+  async function handleReprocess() {
+    setShowReprocessConfirm(false);
+    setReprocessing(true);
+    setError("");
+    try {
+      await reprocessSession(sessionId);
+      pollRef.current = setInterval(async () => {
+        try {
+          const status = await getSessionStatus(sessionId);
+          if (status.status === "completed") {
+            clearInterval(pollRef.current);
+            const [noteData, sessionData] = await Promise.all([
+              getNote(sessionId),
+              getSession(sessionId),
+            ]);
+            setNote(noteData);
+            setSoap(noteData.soap_json || {});
+            setTranscript(noteData.transcript || "");
+            setSession(sessionData);
+            setReprocessing(false);
+          } else if (status.status === "failed") {
+            clearInterval(pollRef.current);
+            setError(status.error_message || "Reprocessing failed");
+            setReprocessing(false);
+          }
+        } catch {
+          clearInterval(pollRef.current);
+          setError("Polling failed");
+          setReprocessing(false);
+        }
+      }, 3000);
+    } catch (e) {
+      setError(e.response?.data?.detail || "Reprocess failed");
+      setReprocessing(false);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
 
   if (loading)
     return (
@@ -312,6 +363,22 @@ export default function NoteEditor() {
 
       {!isSigned && (
         <div className="flex gap-3 justify-end pt-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowReprocessConfirm(true)}
+              disabled={reprocessing}
+              className="btn-ghost text-amber-600"
+            >
+              {reprocessing ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+                  Reprocessing...
+                </span>
+              ) : (
+                "Reprocess"
+              )}
+            </button>
+          )}
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
@@ -407,6 +474,39 @@ export default function NoteEditor() {
                 ) : (
                   "Sign & Finalize"
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reprocessing && (
+        <div className="card p-6 flex items-center justify-center gap-3 text-sm text-muted">
+          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+          Reprocessing with current AI model...
+        </div>
+      )}
+
+      {showReprocessConfirm && (
+        <div className="fixed inset-0 bg-surface-0/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-lift-lg animate-scale-in">
+            <h3 className="text-lg font-semibold mb-1">Reprocess this note?</h3>
+            <p className="text-sm text-muted mb-5">
+              This will re-run transcription and SOAP generation using the
+              doctor's current AI model. The existing note will be replaced.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowReprocessConfirm(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReprocess}
+                className="btn-primary"
+              >
+                Reprocess
               </button>
             </div>
           </div>
