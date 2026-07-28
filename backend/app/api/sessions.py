@@ -403,8 +403,11 @@ async def get_note_pdf(
             detail=f"PDF generation failed: {e}",
         )
 
+    patient_name = session.patient.name.replace(" ", "-")
+    date_str = (note.signed_at or session.created_at).strftime("%Y-%m-%d")
+    filename = f"{patient_name}-{date_str}-notes.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="note_{session_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

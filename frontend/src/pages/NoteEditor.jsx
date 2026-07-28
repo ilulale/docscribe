@@ -444,7 +444,7 @@ export default function NoteEditor() {
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = `note_${sessionId}.pdf`;
+              a.download = `${session?.patient_name || sessionId}-notes.pdf`;
               a.click();
               URL.revokeObjectURL(url);
             }}
