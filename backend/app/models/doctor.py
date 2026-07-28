@@ -15,6 +15,11 @@ class Doctor(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    openrouter_model: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="google/gemini-3.1-flash-lite",
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     patients = relationship("Patient", back_populates="doctor", lazy="selectin")

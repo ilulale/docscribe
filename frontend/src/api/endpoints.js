@@ -125,8 +125,13 @@ export async function listDoctors() {
   return data;
 }
 
-export async function createDoctor({ name, email, password }) {
-  const { data } = await client.post("/admin/doctors", { name, email, password });
+export async function createDoctor({ name, email, password, openrouter_model }) {
+  const { data } = await client.post("/admin/doctors", {
+    name,
+    email,
+    password,
+    openrouter_model,
+  });
   return data;
 }
 
@@ -134,6 +139,18 @@ export async function toggleDoctorActive(doctorId, isActive) {
   const { data } = await client.patch(`/admin/doctors/${doctorId}/active`, {
     is_active: isActive,
   });
+  return data;
+}
+
+export async function updateDoctorModel(doctorId, openrouter_model) {
+  const { data } = await client.patch(`/admin/doctors/${doctorId}`, {
+    openrouter_model,
+  });
+  return data;
+}
+
+export async function listModels() {
+  const { data } = await client.get("/admin/models");
   return data;
 }
 

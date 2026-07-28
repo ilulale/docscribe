@@ -1,5 +1,7 @@
 from datetime import date, datetime, timezone
+import time
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +17,7 @@ from app.schemas.admin import (
     DoctorActiveUpdate,
     DoctorCreate,
     DoctorCreditUsage,
+    DoctorModelUpdate,
     DoctorResponse,
     InvoiceCreate,
     InvoiceResponse,
@@ -24,6 +27,36 @@ from app.schemas.admin import (
 from app.services.auth import hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+# In-memory cache for OpenRouter models (1-hour TTL)
+_models_cache: list[dict] = []
+_models_cache_ts: float = 0
+_MODELS_CACHE_TTL = 3600  # 1 hour
+
+
+async def _fetch_models_from_openrouter() -> list[dict]:
+    global _models_cache, _models_cache_ts
+    now = time.time()
+    if _models_cache and (now - _models_cache_ts) < _MODELS_CACHE_TTL:
+        return _models_cache
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get("https://openrouter.ai/api/v1/models")
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            _models_cache = [
+                {
+                    "slug": m["id"],
+                    "name": m.get("name", m["id"]),
+                    "pricing": m.get("pricing", {"prompt": "0", "completion": "0"}),
+                }
+                for m in data
+            ]
+            _models_cache_ts = now
+            return _models_cache
+    except Exception:
+        return _models_cache or []
 
 
 @router.get("/doctors", response_model=list[DoctorResponse])
@@ -49,6 +82,7 @@ async def create_doctor(
         name=body.name,
         email=body.email,
         hashed_password=hash_password(body.password),
+        openrouter_model=body.openrouter_model,
     )
     db.add(doctor)
     await db.commit()
@@ -69,6 +103,24 @@ async def toggle_doctor_active(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
 
     doctor.is_active = body.is_active
+    await db.commit()
+    await db.refresh(doctor)
+    return doctor
+
+
+@router.patch("/doctors/{doctor_id}", response_model=DoctorResponse)
+async def update_doctor_model(
+    doctor_id: int,
+    body: DoctorModelUpdate,
+    admin: Doctor = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Doctor).where(Doctor.id == doctor_id))
+    doctor = result.scalar_one_or_none()
+    if not doctor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+
+    doctor.openrouter_model = body.openrouter_model
     await db.commit()
     await db.refresh(doctor)
     return doctor
@@ -174,6 +226,7 @@ async def get_credits(
             DoctorCreditUsage(
                 doctor_id=doctor.id,
                 doctor_name=doctor.name,
+                openrouter_model=doctor.openrouter_model,
                 total_prompt_tokens=row.prompt if row else 0,
                 total_completion_tokens=row.completion if row else 0,
                 total_sessions=row.total_sessions if row else 0,
@@ -181,3 +234,11 @@ async def get_credits(
         )
 
     return CreditsResponse(doctors=credit_usages)
+
+
+@router.get("/models")
+async def list_models(
+    admin: Doctor = Depends(get_current_admin),
+):
+    models = await _fetch_models_from_openrouter()
+    return models
