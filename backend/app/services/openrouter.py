@@ -86,6 +86,10 @@ def call_openrouter(messages: list[dict], model: str | None = None) -> OpenRoute
     resp.raise_for_status()
 
     data = resp.json()
+    if "choices" not in data or not data["choices"]:
+        error_msg = data.get("error", {}).get("message", "Unknown API error")
+        raise RuntimeError(f"OpenRouter API error for model '{payload['model']}': {error_msg}")
+
     choice = data["choices"][0]["message"]["content"]
     usage = data.get("usage", {})
 

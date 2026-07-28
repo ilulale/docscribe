@@ -10,6 +10,13 @@ import {
 
 const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
 
+function extractError(err) {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map((e) => e.msg).join(", ");
+  return "Failed to update model";
+}
+
 export default function DoctorsPage() {
   const [doctors, setDoctors] = useState([]);
   const [models, setModels] = useState([]);
@@ -19,6 +26,8 @@ export default function DoctorsPage() {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+  const [tableQuery, setTableQuery] = useState("");
+  const [createQuery, setCreateQuery] = useState("");
 
   useEffect(() => {
     loadDoctors();
@@ -54,7 +63,7 @@ export default function DoctorsPage() {
       setShowCreate(false);
       await loadDoctors();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to create doctor");
+      setError(extractError(err));
     }
     setCreating(false);
   }
@@ -64,17 +73,18 @@ export default function DoctorsPage() {
       await toggleDoctorActive(doctorId, !currentActive);
       await loadDoctors();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to update");
+      setError(extractError(err));
     }
   }
 
   async function handleModelChange(doctorId, newModel) {
+    if (!newModel || typeof newModel !== "string") return;
     setUpdatingId(doctorId);
     try {
       await updateDoctorModel(doctorId, newModel);
       await loadDoctors();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to update model");
+      setError(extractError(err));
     }
     setUpdatingId(null);
   }
@@ -143,17 +153,14 @@ export default function DoctorsPage() {
             />
             <Combobox
               value={form.openrouter_model}
-              onChange={(val) => setForm({ ...form, openrouter_model: val })}
+              onChange={(val) => { if (val) setForm({ ...form, openrouter_model: val }); setCreateQuery(""); }}
             >
               <div className="relative">
                 <ComboboxInput
                   className="input w-full"
                   placeholder="AI Model"
                   displayValue={(slug) => modelDisplayName(slug)}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setForm({ ...form, openrouter_model: val });
-                  }}
+                  onChange={(e) => setCreateQuery(e.target.value)}
                 />
                 <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <svg className="h-4 w-4 text-muted" viewBox="0 0 20 20" fill="currentColor">
@@ -163,7 +170,7 @@ export default function DoctorsPage() {
                 {models.length > 0 && (
                   <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white border border-border shadow-lg text-sm">
                     {models
-                      .filter((m) => modelQuery(m, form.openrouter_model))
+                      .filter((m) => createQuery === "" || modelQuery(m, createQuery))
                       .map((m) => (
                         <ComboboxOption
                           key={m.slug}
@@ -200,8 +207,8 @@ export default function DoctorsPage() {
           Loading...
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
+        <div className="card">
+          <table className="w-full overflow-visible">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">
@@ -250,13 +257,13 @@ export default function DoctorsPage() {
                         ) : (
                           <Combobox
                             value={d.openrouter_model}
-                            onChange={(val) => handleModelChange(d.id, val)}
+                            onChange={(val) => { if (val) handleModelChange(d.id, val); setTableQuery(""); }}
                           >
                             <div className="relative min-w-[200px]">
                               <ComboboxInput
                                 className="text-sm border border-transparent hover:border-border rounded px-2 py-1 w-full focus:border-accent focus:outline-none transition-colors"
                                 displayValue={(slug) => modelDisplayName(slug)}
-                                onChange={() => {}}
+                                onChange={(e) => setTableQuery(e.target.value)}
                               />
                               <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
                                 <svg className="h-3.5 w-3.5 text-muted" viewBox="0 0 20 20" fill="currentColor">
@@ -264,8 +271,10 @@ export default function DoctorsPage() {
                                 </svg>
                               </ComboboxButton>
                               {models.length > 0 && (
-                                <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white border border-border shadow-lg text-sm">
-                                  {models.map((m) => (
+                                <ComboboxOptions className="absolute left-0 z-50 mt-1 min-w-[280px] max-h-60 w-full overflow-auto rounded-lg bg-white border border-border shadow-lg text-sm">
+                                  {models
+                                    .filter((m) => tableQuery === "" || modelQuery(m, tableQuery))
+                                    .map((m) => (
                                     <ComboboxOption
                                       key={m.slug}
                                       value={m.slug}

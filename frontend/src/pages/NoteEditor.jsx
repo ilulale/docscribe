@@ -397,6 +397,15 @@ export default function NoteEditor() {
               "Regenerate"
             )}
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowReprocessConfirm(true)}
+              disabled={reprocessing}
+              className="btn-secondary"
+            >
+              {reprocessing ? "Reprocessing..." : "Reprocess"}
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -415,6 +424,15 @@ export default function NoteEditor() {
 
       {isSigned && (
         <div className="flex gap-3 justify-end pt-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowReprocessConfirm(true)}
+              disabled={reprocessing}
+              className="btn-secondary"
+            >
+              {reprocessing ? "Reprocessing..." : "Reprocess"}
+            </button>
+          )}
           <button
             onClick={async () => {
               const token = localStorage.getItem("token");
@@ -446,18 +464,6 @@ export default function NoteEditor() {
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             Download PDF
-          </button>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="flex justify-end pt-1">
-          <button
-            onClick={() => setShowReprocessConfirm(true)}
-            disabled={reprocessing}
-            className="btn-ghost text-amber-600 text-xs"
-          >
-            {reprocessing ? "Reprocessing..." : "Reprocess with current model"}
           </button>
         </div>
       )}
