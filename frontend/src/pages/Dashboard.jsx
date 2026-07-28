@@ -75,14 +75,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted mt-0.5">
             Your consultation overview
           </p>
         </div>
-        <Link to="/sessions/new" className="btn-primary">
+        <Link to="/sessions/new" className="btn-primary shrink-0">
           <svg
             width="16"
             height="16"
@@ -96,11 +96,12 @@ export default function Dashboard() {
             <line x1="12" y1="8" x2="12" y2="16" />
             <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
-          New Recording
+          <span className="hidden sm:inline">New Recording</span>
+          <span className="sm:hidden">Record</span>
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {statCards.map((card, i) => (
           <div
             key={card.label}
@@ -156,7 +157,7 @@ export default function Dashboard() {
               return (
                 <div
                   key={session.id}
-                  className={`card-hover px-5 py-3.5 flex items-center justify-between cursor-pointer opacity-0 animate-slide-up`}
+                  className={`card-hover px-4 sm:px-5 py-3.5 flex items-center justify-between cursor-pointer opacity-0 animate-slide-up`}
                   style={{ animationDelay: `${i * 0.03}s` }}
                   onClick={() =>
                     navigate(
@@ -166,8 +167,8 @@ export default function Dashboard() {
                     )
                   }
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-surface-0/5 flex items-center justify-center text-2xs font-bold text-muted shrink-0">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-surface-0/5 flex items-center justify-center text-2xs font-bold text-muted shrink-0">
                       {String(session.sequence_number ?? session.id).padStart(2, "0")}
                     </div>
                     <div className="min-w-0">
@@ -189,12 +190,12 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     {session.status === "failed" && (
                       <button
                         onClick={(e) => handleRetry(e, session.id)}
                         disabled={retryingId === session.id}
-                        className="btn-primary text-xs px-3 py-1.5"
+                        className="btn-primary text-xs px-2.5 sm:px-3 py-1.5"
                       >
                         {retryingId === session.id
                           ? "Retrying..."

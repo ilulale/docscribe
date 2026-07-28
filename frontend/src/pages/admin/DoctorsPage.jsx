@@ -101,16 +101,16 @@ export default function DoctorsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Doctors</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Doctors</h1>
           <p className="text-sm text-muted mt-0.5">
             Manage practitioner accounts
           </p>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="btn-primary"
+          className="btn-primary shrink-0"
         >
           {showCreate ? "Cancel" : "Add Doctor"}
         </button>
@@ -207,8 +207,8 @@ export default function DoctorsPage() {
           Loading...
         </div>
       ) : (
-        <div className="card">
-          <table className="w-full overflow-visible">
+        <div className="card overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-5 py-3 text-2xs font-medium uppercase tracking-wider text-muted">

@@ -101,9 +101,9 @@ export default function CreditsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Credits</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Credits</h1>
           <p className="text-sm text-muted mt-0.5">
             Token usage and estimated costs
           </p>
@@ -153,8 +153,8 @@ export default function CreditsPage() {
           Loading...
         </div>
       ) : (
-        <div className="card overflow-hidden animate-slide-up stagger-2">
-          <table className="w-full">
+        <div className="card overflow-x-auto animate-slide-up stagger-2">
+          <table className="w-full min-w-[650px]">
             <thead>
               <tr className="border-b border-border">
                 {[

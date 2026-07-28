@@ -136,7 +136,7 @@ export default function NewSession() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">New Recording</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">New Recording</h1>
         <p className="text-sm text-muted mt-0.5">
           Record a consultation to generate a SOAP note
         </p>
@@ -166,8 +166,8 @@ export default function NewSession() {
         )}
       </div>
 
-      <div className="card p-8 flex flex-col items-center space-y-8 animate-slide-up stagger-2">
-        <div className="font-mono text-5xl font-medium tracking-tight tabular-nums text-surface-0">
+      <div className="card p-6 sm:p-8 flex flex-col items-center space-y-6 sm:space-y-8 animate-slide-up stagger-2">
+        <div className="font-mono text-4xl sm:text-5xl font-medium tracking-tight tabular-nums text-surface-0">
           {formatTime(elapsed)}
         </div>
 
@@ -175,7 +175,7 @@ export default function NewSession() {
           <button
             onClick={startRecording}
             disabled={!selectedPatient}
-            className="group relative w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 disabled:bg-gray-200 text-white transition-all duration-200 active:scale-95 flex items-center justify-center"
+            className="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-red-500 hover:bg-red-600 disabled:bg-gray-200 text-white transition-all duration-200 active:scale-95 flex items-center justify-center"
           >
             <div className="absolute inset-0 rounded-full bg-red-500/20 scale-100 group-hover:scale-110 transition-transform duration-300" />
             <svg
@@ -202,11 +202,11 @@ export default function NewSession() {
             {paused ? (
               <button
                 onClick={resumeRecording}
-                className="btn-primary w-16 h-16 rounded-full p-0"
+                className="btn-primary w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0"
               >
                 <svg
-                  width="20"
-                  height="20"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="white"
                   stroke="none"
@@ -217,11 +217,11 @@ export default function NewSession() {
             ) : (
               <button
                 onClick={pauseRecording}
-                className="btn-secondary w-16 h-16 rounded-full p-0"
+                className="btn-secondary w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0"
               >
                 <svg
-                  width="18"
-                  height="18"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                   stroke="none"
@@ -233,11 +233,11 @@ export default function NewSession() {
             )}
             <button
               onClick={() => setShowConfirm(true)}
-              className="w-16 h-16 rounded-full bg-surface-0 hover:bg-surface-1 text-white transition-all duration-150 active:scale-95 flex items-center justify-center"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-surface-0 hover:bg-surface-1 text-white transition-all duration-150 active:scale-95 flex items-center justify-center"
             >
               <svg
-                width="18"
-                height="18"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="white"
                 stroke="none"

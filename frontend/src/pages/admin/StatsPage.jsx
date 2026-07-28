@@ -47,11 +47,11 @@ export default function StatsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">System Stats</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">System Stats</h1>
         <p className="text-sm text-muted mt-0.5">Platform overview</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((card, i) => (
           <div
             key={card.label}

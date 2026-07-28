@@ -51,7 +51,7 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-56 bg-surface-0 text-white flex flex-col shrink-0">
+    <aside className="hidden lg:flex w-56 bg-surface-0 text-white flex-col shrink-0">
       <div className="px-5 py-5 flex items-center gap-2.5">
         <div className="relative">
           <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">

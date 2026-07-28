@@ -85,7 +85,7 @@ function SoapSection({ field, label, placeholder, value, onChange, readOnly }) {
             onChange={(e) => onChange(field, e.target.value)}
             readOnly={readOnly}
             placeholder={placeholder}
-            rows={12}
+            rows={8}
             className={`w-full px-4 py-3 rounded-xl text-sm bg-canvas border border-border resize-y focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-150 min-h-[280px] ${
               readOnly ? "bg-surface-0/3 cursor-default" : ""
             }`}
@@ -268,21 +268,21 @@ export default function NoteEditor() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">SOAP Note</h1>
-          <p className="text-sm text-muted mt-0.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">SOAP Note</h1>
+          <p className="text-sm text-muted mt-0.5 truncate">
             Session {session?.sequence_number ?? sessionId} &mdash;{" "}
             {session?.patient_name || `Patient #${session?.patient_id}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {isSigned && <span className="badge-success">Signed</span>}
           <Link
             to={`/sessions/${sessionId}`}
             className="btn-ghost text-xs"
           >
-            Session Status
+            Status
           </Link>
         </div>
       </div>
@@ -382,11 +382,11 @@ export default function NoteEditor() {
       </div>
 
       {!isSigned && (
-        <div className="flex gap-3 justify-end pt-2">
+        <div className="flex flex-wrap gap-2 justify-end pt-2">
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
-            className="btn-secondary"
+            className="btn-secondary text-xs sm:text-sm"
           >
             {regenerating ? (
               <span className="inline-flex items-center gap-2">
@@ -401,7 +401,7 @@ export default function NoteEditor() {
             <button
               onClick={() => setShowReprocessConfirm(true)}
               disabled={reprocessing}
-              className="btn-secondary"
+              className="btn-secondary text-xs sm:text-sm"
             >
               {reprocessing ? "Reprocessing..." : "Reprocess"}
             </button>
@@ -409,13 +409,13 @@ export default function NoteEditor() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="btn-secondary"
+            className="btn-secondary text-xs sm:text-sm"
           >
             {saving ? "Saving..." : "Save Draft"}
           </button>
           <button
             onClick={() => setShowSignConfirm(true)}
-            className="btn-primary"
+            className="btn-primary text-xs sm:text-sm"
           >
             Review & Sign
           </button>
@@ -423,12 +423,12 @@ export default function NoteEditor() {
       )}
 
       {isSigned && (
-        <div className="flex gap-3 justify-end pt-2">
+        <div className="flex flex-wrap gap-2 justify-end pt-2">
           {isAdmin && (
             <button
               onClick={() => setShowReprocessConfirm(true)}
               disabled={reprocessing}
-              className="btn-secondary"
+              className="btn-secondary text-xs sm:text-sm"
             >
               {reprocessing ? "Reprocessing..." : "Reprocess"}
             </button>
@@ -440,7 +440,7 @@ export default function NoteEditor() {
                 headers: { Authorization: `Bearer ${token}` },
               });
               if (!resp.ok) return;
-              const blob = await resp.blob();
+              const blob = await blob.blob();
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
@@ -449,7 +449,7 @@ export default function NoteEditor() {
               a.click();
               URL.revokeObjectURL(url);
             }}
-            className="btn-primary"
+            className="btn-primary text-xs sm:text-sm"
           >
             <svg
               width="14"

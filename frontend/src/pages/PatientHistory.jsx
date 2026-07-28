@@ -77,7 +77,7 @@ export default function PatientHistory() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="w-12 h-12 rounded-full bg-accent-light flex items-center justify-center text-lg font-bold text-accent">
           {patient?.name?.charAt(0)?.toUpperCase() || "?"}
         </div>
