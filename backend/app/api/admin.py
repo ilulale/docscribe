@@ -261,16 +261,15 @@ async def reprocess_session(
     note = note_result.scalar_one_or_none()
     if not note:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    if note.is_signed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot reprocess a signed note. Unsign it first.",
-        )
     if not session.audio_path:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Session has no audio to reprocess",
         )
+
+    # Un-sign the note so it becomes editable again after reprocess
+    note.is_signed = False
+    note.signed_at = None
 
     session.status = SessionStatus.pending
     session.error_message = None

@@ -12,6 +12,20 @@ import {
 } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 
+const STEPS = [
+  { key: "pending", label: "Uploaded" },
+  { key: "transcribing", label: "Transcribing" },
+  { key: "generating_soap", label: "Generating" },
+  { key: "completed", label: "Done" },
+];
+
+const PROGRESS_MESSAGES = {
+  pending: "Preparing audio...",
+  transcribing: "Transcribing audio...",
+  generating_soap: "Generating SOAP note...",
+  completed: "Processing complete!",
+};
+
 const SECTIONS = [
   {
     key: "subjective",
@@ -94,6 +108,7 @@ export default function NoteEditor() {
   const [signing, setSigning] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessStatus, setReprocessStatus] = useState(null);
   const [showReprocessConfirm, setShowReprocessConfirm] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -186,14 +201,17 @@ export default function NoteEditor() {
   async function handleReprocess() {
     setShowReprocessConfirm(false);
     setReprocessing(true);
+    setReprocessStatus("pending");
     setError("");
     try {
       await reprocessSession(sessionId);
       pollRef.current = setInterval(async () => {
         try {
           const status = await getSessionStatus(sessionId);
+          setReprocessStatus(status.status);
           if (status.status === "completed") {
             clearInterval(pollRef.current);
+            setReprocessStatus(null);
             const [noteData, sessionData] = await Promise.all([
               getNote(sessionId),
               getSession(sessionId),
@@ -205,11 +223,13 @@ export default function NoteEditor() {
             setReprocessing(false);
           } else if (status.status === "failed") {
             clearInterval(pollRef.current);
+            setReprocessStatus(null);
             setError(status.error_message || "Reprocessing failed");
             setReprocessing(false);
           }
         } catch {
           clearInterval(pollRef.current);
+          setReprocessStatus(null);
           setError("Polling failed");
           setReprocessing(false);
         }
@@ -363,22 +383,6 @@ export default function NoteEditor() {
 
       {!isSigned && (
         <div className="flex gap-3 justify-end pt-2">
-          {isAdmin && (
-            <button
-              onClick={() => setShowReprocessConfirm(true)}
-              disabled={reprocessing}
-              className="btn-ghost text-amber-600"
-            >
-              {reprocessing ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
-                  Reprocessing...
-                </span>
-              ) : (
-                "Reprocess"
-              )}
-            </button>
-          )}
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
@@ -446,6 +450,18 @@ export default function NoteEditor() {
         </div>
       )}
 
+      {isAdmin && (
+        <div className="flex justify-end pt-1">
+          <button
+            onClick={() => setShowReprocessConfirm(true)}
+            disabled={reprocessing}
+            className="btn-ghost text-amber-600 text-xs"
+          >
+            {reprocessing ? "Reprocessing..." : "Reprocess with current model"}
+          </button>
+        </div>
+      )}
+
       {showSignConfirm && (
         <div className="fixed inset-0 bg-surface-0/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-lift-lg animate-scale-in">
@@ -481,9 +497,45 @@ export default function NoteEditor() {
       )}
 
       {reprocessing && (
-        <div className="card p-6 flex items-center justify-center gap-3 text-sm text-muted">
-          <span className="w-4 h-4 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
-          Reprocessing with current AI model...
+        <div className="card p-6 animate-slide-up">
+          <p className="section-title mb-5">Reprocessing with current model</p>
+          <div className="flex items-end gap-1 mb-6">
+            {STEPS.map((step, i) => {
+              const currentIdx = STEPS.findIndex((s) => s.key === (reprocessStatus || "pending"));
+              const isDone = i < currentIdx;
+              const isCurrent = i === currentIdx && reprocessStatus !== "completed";
+              return (
+                <div key={step.key} className="flex-1 flex flex-col gap-2">
+                  <div className="relative h-1.5 rounded-full overflow-hidden bg-surface-0/5">
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out ${
+                        isDone
+                          ? "bg-accent w-full"
+                          : isCurrent
+                          ? "bg-accent w-2/3 animate-shimmer"
+                          : "w-0"
+                      }`}
+                    />
+                  </div>
+                  <span
+                    className={`text-2xs ${
+                      isCurrent
+                        ? "text-accent font-medium"
+                        : isDone
+                        ? "text-surface-0/60"
+                        : "text-muted"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted">
+            <span className="w-3.5 h-3.5 border-2 border-muted/30 border-t-muted rounded-full animate-spin" />
+            {PROGRESS_MESSAGES[reprocessStatus] || "Processing..."}
+          </div>
         </div>
       )}
 
@@ -493,7 +545,8 @@ export default function NoteEditor() {
             <h3 className="text-lg font-semibold mb-1">Reprocess this note?</h3>
             <p className="text-sm text-muted mb-5">
               This will re-run transcription and SOAP generation using the
-              doctor's current AI model. The existing note will be replaced.
+              doctor's current AI model. The existing note will be replaced
+              and unsigned.
             </p>
             <div className="flex gap-3 justify-end">
               <button

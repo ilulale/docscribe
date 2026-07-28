@@ -152,15 +152,25 @@ def process_session(self, session_id: int):
 
         # Save note
         soap_json = _parse_soap_json(soap_text, sections=template_sections)
-        note = Note(
-            session_id=session.id,
-            transcript=transcript,
-            soap_json=soap_json,
-            signed_soap_text=soap_text,
-            prompt_tokens=total_prompt_tokens,
-            completion_tokens=total_completion_tokens,
-        )
-        db.add(note)
+        existing_note = db.query(Note).filter(Note.session_id == session.id).first()
+        if existing_note:
+            existing_note.transcript = transcript
+            existing_note.soap_json = soap_json
+            existing_note.signed_soap_text = soap_text
+            existing_note.prompt_tokens = total_prompt_tokens
+            existing_note.completion_tokens = total_completion_tokens
+            existing_note.is_signed = False
+            existing_note.signed_at = None
+        else:
+            note = Note(
+                session_id=session.id,
+                transcript=transcript,
+                soap_json=soap_json,
+                signed_soap_text=soap_text,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
+            )
+            db.add(note)
 
         session.status = SessionStatus.completed
         session.completed_at = datetime.now(timezone.utc)
