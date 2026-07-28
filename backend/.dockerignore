@@ -1,8 +1,0 @@
-__pycache__
-.pytest_cache
-*.pyc
-test.db
-.git
-.gitignore
-*.md
-.DS_Store

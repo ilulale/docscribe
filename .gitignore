@@ -37,3 +37,11 @@ minio_data/
 *.mp3
 *.wav
 *.ogg
+
+# junk
+.firecrawl/
+backend/test.db
+compa
+backend/.dockerignore
+frontend/.dockerignore
+docs/agents/
