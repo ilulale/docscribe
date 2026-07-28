@@ -440,7 +440,7 @@ export default function NoteEditor() {
                 headers: { Authorization: `Bearer ${token}` },
               });
               if (!resp.ok) return;
-              const blob = await blob.blob();
+              const blob = await resp.blob();
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
