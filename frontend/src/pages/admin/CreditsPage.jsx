@@ -9,11 +9,11 @@ function parsePrice(val) {
 }
 
 function calcCostUsd(promptTokens, completionTokens, modelPricing) {
-  const prompt = modelPricing?.prompt ?? 0.25;
-  const completion = modelPricing?.completion ?? 1.50;
+  const prompt = modelPricing?.prompt ?? "0.00000025";
+  const completion = modelPricing?.completion ?? "0.0000015";
   return (
-    (promptTokens / 1_000_000) * parsePrice(prompt) +
-    (completionTokens / 1_000_000) * parsePrice(completion)
+    promptTokens * parsePrice(prompt) +
+    completionTokens * parsePrice(completion)
   );
 }
 
@@ -140,7 +140,7 @@ export default function CreditsPage() {
 
       <div className="card p-4 flex items-center justify-between animate-slide-up">
         <span className="text-2xs text-muted">
-          Costs calculated per doctor's assigned model pricing
+          Costs calculated per model used, using live OpenRouter pricing
         </span>
         <span className="text-sm font-semibold tabular-nums">
           Total: {formatCost(totalCost)}

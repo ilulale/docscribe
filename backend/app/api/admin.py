@@ -211,27 +211,30 @@ async def get_credits(
     token_query = (
         select(
             Session.doctor_id,
+            func.coalesce(Note.model_slug, Doctor.openrouter_model).label("model_slug"),
             func.coalesce(func.sum(Note.prompt_tokens), 0).label("prompt"),
             func.coalesce(func.sum(Note.completion_tokens), 0).label("completion"),
             func.count(Session.id).label("total_sessions"),
         )
         .outerjoin(Note, Note.session_id == Session.id)
-        .group_by(Session.doctor_id)
+        .join(Doctor, Doctor.id == Session.doctor_id)
+        .group_by(Session.doctor_id, Note.model_slug, Doctor.openrouter_model)
     )
     token_result = await db.execute(token_query)
-    token_rows = {row.doctor_id: row for row in token_result.all()}
 
     credit_usages = []
-    for doctor in doctors:
-        row = token_rows.get(doctor.id)
+    for row in token_result.all():
+        doctor = next((d for d in doctors if d.id == row.doctor_id), None)
+        if not doctor:
+            continue
         credit_usages.append(
             DoctorCreditUsage(
                 doctor_id=doctor.id,
                 doctor_name=doctor.name,
-                openrouter_model=doctor.openrouter_model,
-                total_prompt_tokens=row.prompt if row else 0,
-                total_completion_tokens=row.completion if row else 0,
-                total_sessions=row.total_sessions if row else 0,
+                openrouter_model=row.model_slug,
+                total_prompt_tokens=row.prompt,
+                total_completion_tokens=row.completion,
+                total_sessions=row.total_sessions,
             )
         )
 

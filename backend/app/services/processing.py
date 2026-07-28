@@ -159,6 +159,7 @@ def process_session(self, session_id: int):
             existing_note.signed_soap_text = soap_text
             existing_note.prompt_tokens = total_prompt_tokens
             existing_note.completion_tokens = total_completion_tokens
+            existing_note.model_slug = doctor_model
             existing_note.is_signed = False
             existing_note.signed_at = None
         else:
@@ -169,6 +170,7 @@ def process_session(self, session_id: int):
                 signed_soap_text=soap_text,
                 prompt_tokens=total_prompt_tokens,
                 completion_tokens=total_completion_tokens,
+                model_slug=doctor_model,
             )
             db.add(note)
 
