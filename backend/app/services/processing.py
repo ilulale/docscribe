@@ -104,9 +104,13 @@ def process_session(self, session_id: int):
         session.status = SessionStatus.transcribing
         db.commit()
 
+        # Load doctor for model selection
+        doctor = db.get(Doctor, session.doctor_id)
+        doctor_model = doctor.openrouter_model if doctor else None
+
         try:
             audio_bytes = _download_audio(session.audio_path)
-            transcribe_result = transcribe_audio(audio_bytes)
+            transcribe_result = transcribe_audio(audio_bytes, model=doctor_model)
             transcript = transcribe_result.content
             total_prompt_tokens += transcribe_result.prompt_tokens
             total_completion_tokens += transcribe_result.completion_tokens
@@ -118,7 +122,6 @@ def process_session(self, session_id: int):
             return
 
         # Load doctor's report template
-        doctor = db.get(Doctor, session.doctor_id)
         template_result = None
         if doctor:
             template_result = db.execute(
@@ -136,7 +139,7 @@ def process_session(self, session_id: int):
         db.commit()
 
         try:
-            soap_result = generate_soap(transcript, sections=template_sections)
+            soap_result = generate_soap(transcript, sections=template_sections, model=doctor_model)
             soap_text = soap_result.content
             total_prompt_tokens += soap_result.prompt_tokens
             total_completion_tokens += soap_result.completion_tokens
@@ -149,15 +152,27 @@ def process_session(self, session_id: int):
 
         # Save note
         soap_json = _parse_soap_json(soap_text, sections=template_sections)
-        note = Note(
-            session_id=session.id,
-            transcript=transcript,
-            soap_json=soap_json,
-            signed_soap_text=soap_text,
-            prompt_tokens=total_prompt_tokens,
-            completion_tokens=total_completion_tokens,
-        )
-        db.add(note)
+        existing_note = db.query(Note).filter(Note.session_id == session.id).first()
+        if existing_note:
+            existing_note.transcript = transcript
+            existing_note.soap_json = soap_json
+            existing_note.signed_soap_text = soap_text
+            existing_note.prompt_tokens = total_prompt_tokens
+            existing_note.completion_tokens = total_completion_tokens
+            existing_note.model_slug = doctor_model
+            existing_note.is_signed = False
+            existing_note.signed_at = None
+        else:
+            note = Note(
+                session_id=session.id,
+                transcript=transcript,
+                soap_json=soap_json,
+                signed_soap_text=soap_text,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
+                model_slug=doctor_model,
+            )
+            db.add(note)
 
         session.status = SessionStatus.completed
         session.completed_at = datetime.now(timezone.utc)

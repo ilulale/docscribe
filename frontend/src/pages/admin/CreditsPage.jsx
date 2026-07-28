@@ -1,22 +1,25 @@
 import { useState, useEffect } from "react";
-import { getCredits } from "../../api/endpoints";
+import { getCredits, listModels } from "../../api/endpoints";
 
 const USD_TO_INR = 85;
 
-const PRICING = {
-  prompt_per_1m: 0.25,
-  completion_per_1m: 1.50,
-};
+function parsePrice(val) {
+  const num = typeof val === "string" ? parseFloat(val) : val;
+  return isNaN(num) ? 0 : num;
+}
 
-function calcCostUsd(promptTokens, completionTokens) {
+function calcCostUsd(promptTokens, completionTokens, modelPricing) {
+  const prompt = modelPricing?.prompt ?? "0.00000025";
+  const completion = modelPricing?.completion ?? "0.0000015";
   return (
-    (promptTokens / 1_000_000) * PRICING.prompt_per_1m +
-    (completionTokens / 1_000_000) * PRICING.completion_per_1m
+    promptTokens * parsePrice(prompt) +
+    completionTokens * parsePrice(completion)
   );
 }
 
 export default function CreditsPage() {
   const [credits, setCredits] = useState([]);
+  const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sortBy, setSortBy] = useState("total_sessions");
@@ -26,8 +29,12 @@ export default function CreditsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const data = await getCredits();
-        setCredits(data.doctors || []);
+        const [creditData, modelData] = await Promise.all([
+          getCredits(),
+          listModels().catch(() => []),
+        ]);
+        setCredits(creditData.doctors || []);
+        setModels(modelData || []);
       } catch {
         setError("Failed to load credits");
       }
@@ -35,6 +42,11 @@ export default function CreditsPage() {
     }
     load();
   }, []);
+
+  const modelPricingMap = {};
+  for (const m of models) {
+    modelPricingMap[m.slug] = m.pricing;
+  }
 
   function handleSort(key) {
     if (sortBy === key) {
@@ -58,11 +70,13 @@ export default function CreditsPage() {
     if (sortBy === "estimated_cost") {
       const aCost = calcCostUsd(
         a.total_prompt_tokens,
-        a.total_completion_tokens
+        a.total_completion_tokens,
+        modelPricingMap[a.openrouter_model]
       );
       const bCost = calcCostUsd(
         b.total_prompt_tokens,
-        b.total_completion_tokens
+        b.total_completion_tokens,
+        modelPricingMap[b.openrouter_model]
       );
       return (aCost - bCost) * mult;
     }
@@ -72,7 +86,11 @@ export default function CreditsPage() {
   const totalCost = credits.reduce(
     (sum, c) =>
       sum +
-      calcCostUsd(c.total_prompt_tokens, c.total_completion_tokens),
+      calcCostUsd(
+        c.total_prompt_tokens,
+        c.total_completion_tokens,
+        modelPricingMap[c.openrouter_model]
+      ),
     0
   );
 
@@ -122,7 +140,7 @@ export default function CreditsPage() {
 
       <div className="card p-4 flex items-center justify-between animate-slide-up">
         <span className="text-2xs text-muted">
-          Gemini Flash Lite: prompt $0.25/1M, completion $1.50/1M
+          Costs calculated per model used, using live OpenRouter pricing
         </span>
         <span className="text-sm font-semibold tabular-nums">
           Total: {formatCost(totalCost)}
@@ -141,6 +159,7 @@ export default function CreditsPage() {
               <tr className="border-b border-border">
                 {[
                   { key: "doctor_name", label: "Doctor" },
+                  { key: null, label: "Model" },
                   { key: "total_sessions", label: "Sessions" },
                   { key: "total_prompt_tokens", label: "Prompt Tokens" },
                   {
@@ -174,6 +193,9 @@ export default function CreditsPage() {
                   <td className="px-5 py-3.5 text-sm font-medium">
                     {c.doctor_name}
                   </td>
+                  <td className="px-5 py-3.5 text-sm text-muted font-mono">
+                    {c.openrouter_model}
+                  </td>
                   <td className="px-5 py-3.5 text-sm tabular-nums">
                     {c.total_sessions}
                   </td>
@@ -192,7 +214,8 @@ export default function CreditsPage() {
                     {formatCost(
                       calcCostUsd(
                         c.total_prompt_tokens,
-                        c.total_completion_tokens
+                        c.total_completion_tokens,
+                        modelPricingMap[c.openrouter_model]
                       )
                     )}
                   </td>

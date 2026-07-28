@@ -71,14 +71,14 @@ def encode_audio_bytes(audio_bytes: bytes) -> str:
     return base64.b64encode(audio_bytes).decode("utf-8")
 
 
-def call_openrouter(messages: list[dict]) -> OpenRouterResponse:
+def call_openrouter(messages: list[dict], model: str | None = None) -> OpenRouterResponse:
     headers = {
         "Authorization": f"Bearer {settings.openrouter_api_key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com",
     }
     payload = {
-        "model": settings.openrouter_model,
+        "model": model or settings.openrouter_model,
         "messages": messages,
     }
 
@@ -86,6 +86,10 @@ def call_openrouter(messages: list[dict]) -> OpenRouterResponse:
     resp.raise_for_status()
 
     data = resp.json()
+    if "choices" not in data or not data["choices"]:
+        error_msg = data.get("error", {}).get("message", "Unknown API error")
+        raise RuntimeError(f"OpenRouter API error for model '{payload['model']}': {error_msg}")
+
     choice = data["choices"][0]["message"]["content"]
     usage = data.get("usage", {})
 
@@ -96,7 +100,7 @@ def call_openrouter(messages: list[dict]) -> OpenRouterResponse:
     )
 
 
-def transcribe_audio(audio_bytes: bytes) -> OpenRouterResponse:
+def transcribe_audio(audio_bytes: bytes, model: str | None = None) -> OpenRouterResponse:
     b64_audio = encode_audio_bytes(audio_bytes)
     messages = [
         {
@@ -110,7 +114,7 @@ def transcribe_audio(audio_bytes: bytes) -> OpenRouterResponse:
             ],
         }
     ]
-    return call_openrouter(messages)
+    return call_openrouter(messages, model=model)
 
 
 def build_soap_prompt_from_sections(sections: list[dict]) -> str:
@@ -141,9 +145,9 @@ Transcript:
 """
 
 
-def generate_soap(transcript: str, sections: list[dict] | None = None) -> OpenRouterResponse:
+def generate_soap(transcript: str, sections: list[dict] | None = None, model: str | None = None) -> OpenRouterResponse:
     prompt = build_soap_prompt_from_sections(sections) if sections else SOAP_PROMPT
     messages = [
         {"role": "user", "content": prompt.format(transcript=transcript)}
     ]
-    return call_openrouter(messages)
+    return call_openrouter(messages, model=model)

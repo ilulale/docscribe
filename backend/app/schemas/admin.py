@@ -9,6 +9,7 @@ class DoctorCreate(BaseModel):
     name: str
     email: str
     password: str
+    openrouter_model: str = "google/gemini-3.1-flash-lite"
 
 
 class DoctorResponse(BaseModel):
@@ -17,6 +18,7 @@ class DoctorResponse(BaseModel):
     email: str
     is_active: bool
     is_admin: bool
+    openrouter_model: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -24,6 +26,10 @@ class DoctorResponse(BaseModel):
 
 class DoctorActiveUpdate(BaseModel):
     is_active: bool
+
+
+class DoctorModelUpdate(BaseModel):
+    openrouter_model: str
 
 
 class InvoiceCreate(BaseModel):
@@ -60,6 +66,7 @@ class StatsResponse(BaseModel):
 class DoctorCreditUsage(BaseModel):
     doctor_id: int
     doctor_name: str
+    openrouter_model: str
     total_prompt_tokens: int
     total_completion_tokens: int
     total_sessions: int
