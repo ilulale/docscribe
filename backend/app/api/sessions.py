@@ -332,9 +332,21 @@ async def regenerate_note(
     if not note.transcript:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No transcript to regenerate from")
 
+    # Load doctor's current report template
+    template_result = await db.execute(
+        select(DoctorReportTemplate).where(DoctorReportTemplate.doctor_id == doctor.id)
+    )
+    template = template_result.scalar_one_or_none()
+
     try:
-        soap_result = generate_soap(note.transcript)
-        note.soap_json = _parse_soap_json(soap_result.content)
+        soap_result = generate_soap(
+            note.transcript,
+            sections=template.sections if template else None,
+            opening_persona=template.opening_persona if template else None,
+            transcript_context=template.transcript_context if template else None,
+            strict_rules=template.strict_rules if template else None,
+        )
+        note.soap_json = _parse_soap_json(soap_result.content, sections=template.sections if template else None)
         note.signed_soap_text = soap_result.content
     except Exception as e:
         raise HTTPException(
