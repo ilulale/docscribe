@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   getNote,
-  getReportTemplate,
   updateNote,
   signNote,
   regenerateNote,
@@ -97,6 +96,12 @@ function SoapSection({ field, label, placeholder, value, onChange, readOnly }) {
   );
 }
 
+function keyToLabel(key) {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function NoteEditor() {
   const { id: sessionId } = useParams();
   const doctor = useAuthStore((s) => s.doctor);
@@ -117,7 +122,6 @@ export default function NoteEditor() {
   const [showSignConfirm, setShowSignConfirm] = useState(false);
   const [session, setSession] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [templateSections, setTemplateSections] = useState(null);
   const autoSaveRef = useRef(null);
   const pollRef = useRef(null);
   const isSigned = note?.is_signed;
@@ -141,20 +145,6 @@ export default function NoteEditor() {
     }
     load();
   }, [sessionId]);
-
-  useEffect(() => {
-    async function loadTemplate() {
-      try {
-        const data = await getReportTemplate();
-        if (data.sections?.length) {
-          setTemplateSections(data.sections);
-        }
-      } catch {
-        // ignore — use FALLBACK_SECTIONS
-      }
-    }
-    loadTemplate();
-  }, []);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -379,25 +369,28 @@ export default function NoteEditor() {
       </div>
 
       <div className="space-y-3">
-        {(templateSections || FALLBACK_SECTIONS)
-          .filter((s) => s.visible !== false)
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((s, i) => (
-            <div
-              key={s.key}
-              className="opacity-0 animate-slide-up"
-              style={{ animationDelay: `${(i + 1) * 0.04}s` }}
-            >
-              <SoapSection
-                field={s.key}
-                label={s.label}
-                placeholder={s.prompt_instructions || `Enter ${s.label}...`}
-                value={soap[s.key] || ""}
-                onChange={handleFieldChange}
-                readOnly={isSigned}
-              />
-            </div>
-          ))}
+        {(Object.keys(soap).length > 0
+          ? Object.keys(soap).map((key) => ({
+              key,
+              label: keyToLabel(key),
+            }))
+          : FALLBACK_SECTIONS
+        ).map((s, i) => (
+          <div
+            key={s.key}
+            className="opacity-0 animate-slide-up"
+            style={{ animationDelay: `${(i + 1) * 0.04}s` }}
+          >
+            <SoapSection
+              field={s.key}
+              label={s.label}
+              placeholder={`Enter ${s.label}...`}
+              value={soap[s.key] || ""}
+              onChange={handleFieldChange}
+              readOnly={isSigned}
+            />
+          </div>
+        ))}
       </div>
 
       {!isSigned && (
