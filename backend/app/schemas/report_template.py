@@ -12,6 +12,9 @@ class SectionInput(BaseModel):
 class ReportTemplateInput(BaseModel):
     sections: list[SectionInput]
     pdf_footer: str | None = None
+    opening_persona: str = ""
+    transcript_context: str = ""
+    strict_rules: str = ""
 
 
 class SectionResponse(BaseModel):
@@ -25,3 +28,6 @@ class SectionResponse(BaseModel):
 class ReportTemplateResponse(BaseModel):
     sections: list[SectionResponse]
     pdf_footer: str | None = None
+    opening_persona: str = ""
+    transcript_context: str = ""
+    strict_rules: str = ""

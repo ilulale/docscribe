@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { getReportTemplate, upsertReportTemplate } from "../api/endpoints";
 
+const DEFAULT_OPENING_PERSONA =
+  "You are an expert medical scribe generating a clinical note from a doctor-patient conversation transcript.";
+
+const DEFAULT_TRANSCRIPT_CONTEXT =
+  "You will receive a transcript of a doctor-patient interaction (already translated into English). Convert it into a detailed, professional clinical note following the sections below.";
+
+const DEFAULT_STRICT_RULES =
+  "- Base every statement ONLY on information explicitly present in the transcript. Do NOT infer, assume, or fabricate any clinical detail, vital sign, history, or diagnosis that was not stated.\n" +
+  '- If a section has no corresponding information in the transcript, write "Not discussed" or "Not documented" for that section — do not guess or leave it blank.\n' +
+  "- Use standard clinical terminology and formatting a physician would expect in a medical record.\n" +
+  "- Do not include any commentary, disclaimers, or notes about the AI process itself. Output ONLY the clinical note.";
+
 const DEFAULT_SECTIONS = [
   {
     key: "subjective",
@@ -47,6 +59,9 @@ const DEFAULT_SECTIONS = [
 export default function ReportTemplatePage() {
   const [sections, setSections] = useState([]);
   const [pdfFooter, setPdfFooter] = useState("");
+  const [openingPersona, setOpeningPersona] = useState("");
+  const [transcriptContext, setTranscriptContext] = useState("");
+  const [strictRules, setStrictRules] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -58,8 +73,14 @@ export default function ReportTemplatePage() {
         const data = await getReportTemplate();
         setSections(data.sections?.length ? data.sections : DEFAULT_SECTIONS);
         setPdfFooter(data.pdf_footer || "");
+        setOpeningPersona(data.opening_persona || DEFAULT_OPENING_PERSONA);
+        setTranscriptContext(data.transcript_context || DEFAULT_TRANSCRIPT_CONTEXT);
+        setStrictRules(data.strict_rules || DEFAULT_STRICT_RULES);
       } catch {
         setSections(DEFAULT_SECTIONS);
+        setOpeningPersona(DEFAULT_OPENING_PERSONA);
+        setTranscriptContext(DEFAULT_TRANSCRIPT_CONTEXT);
+        setStrictRules(DEFAULT_STRICT_RULES);
       }
       setLoading(false);
     }
@@ -105,10 +126,21 @@ export default function ReportTemplatePage() {
   }
 
   async function handleSave() {
+    if (!openingPersona.trim() || !transcriptContext.trim() || !strictRules.trim()) {
+      setError("Opening Persona, Transcript Context, and Strict Rules are required.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     try {
-      await upsertReportTemplate({ sections, pdf_footer: pdfFooter || null });
+      await upsertReportTemplate({
+        sections,
+        pdf_footer: pdfFooter || null,
+        opening_persona: openingPersona,
+        transcript_context: transcriptContext,
+        strict_rules: strictRules,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -147,6 +179,57 @@ export default function ReportTemplatePage() {
           Template saved
         </div>
       )}
+
+      {/* Opening Persona */}
+      <div className="card p-4 animate-slide-up">
+        <label className="block text-xs font-medium text-surface-0/60 mb-1.5">
+          Opening Persona
+        </label>
+        <textarea
+          value={openingPersona}
+          onChange={(e) => {
+            setOpeningPersona(e.target.value);
+            setSaved(false);
+          }}
+          rows={3}
+          className="input resize-y text-xs min-h-[80px]"
+          placeholder="The AI's role/persona..."
+        />
+      </div>
+
+      {/* Transcript Context */}
+      <div className="card p-4 animate-slide-up">
+        <label className="block text-xs font-medium text-surface-0/60 mb-1.5">
+          Transcript Context
+        </label>
+        <textarea
+          value={transcriptContext}
+          onChange={(e) => {
+            setTranscriptContext(e.target.value);
+            setSaved(false);
+          }}
+          rows={3}
+          className="input resize-y text-xs min-h-[80px]"
+          placeholder="Context about the transcript..."
+        />
+      </div>
+
+      {/* Strict Rules */}
+      <div className="card p-4 animate-slide-up">
+        <label className="block text-xs font-medium text-surface-0/60 mb-1.5">
+          Strict Rules
+        </label>
+        <textarea
+          value={strictRules}
+          onChange={(e) => {
+            setStrictRules(e.target.value);
+            setSaved(false);
+          }}
+          rows={4}
+          className="input resize-y text-xs min-h-[80px]"
+          placeholder="Rules the AI must follow..."
+        />
+      </div>
 
       <div className="space-y-3">
         {sections.map((section, idx) => (

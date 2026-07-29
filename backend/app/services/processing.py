@@ -131,15 +131,28 @@ def process_session(self, session_id: int):
             ).scalar_one_or_none()
 
         template_sections = None
+        template_opening_persona = None
+        template_transcript_context = None
+        template_strict_rules = None
         if template_result:
             template_sections = template_result.sections
+            template_opening_persona = template_result.opening_persona
+            template_transcript_context = template_result.transcript_context
+            template_strict_rules = template_result.strict_rules
 
         # Stage 2: SOAP generation
         session.status = SessionStatus.generating_soap
         db.commit()
 
         try:
-            soap_result = generate_soap(transcript, sections=template_sections, model=doctor_model)
+            soap_result = generate_soap(
+                transcript,
+                sections=template_sections,
+                opening_persona=template_opening_persona,
+                transcript_context=template_transcript_context,
+                strict_rules=template_strict_rules,
+                model=doctor_model,
+            )
             soap_text = soap_result.content
             total_prompt_tokens += soap_result.prompt_tokens
             total_completion_tokens += soap_result.completion_tokens

@@ -117,8 +117,23 @@ def transcribe_audio(audio_bytes: bytes, model: str | None = None) -> OpenRouter
     return call_openrouter(messages, model=model)
 
 
-def build_soap_prompt_from_sections(sections: list[dict]) -> str:
+def build_soap_prompt_from_sections(
+    sections: list[dict],
+    opening_persona: str | None = None,
+    transcript_context: str | None = None,
+    strict_rules: str | None = None,
+) -> str:
     """Build a dynamic SOAP prompt from template sections."""
+    from app.models.report_template import (
+        DEFAULT_OPENING_PERSONA,
+        DEFAULT_STRICT_RULES,
+        DEFAULT_TRANSCRIPT_CONTEXT,
+    )
+
+    persona = opening_persona or DEFAULT_OPENING_PERSONA
+    context = transcript_context or DEFAULT_TRANSCRIPT_CONTEXT
+    rules = strict_rules or DEFAULT_STRICT_RULES
+
     sorted_sections = sorted(sections, key=lambda s: s.get("order", 0))
     visible = [s for s in sorted_sections if s.get("visible", True)]
 
@@ -127,15 +142,12 @@ def build_soap_prompt_from_sections(sections: list[dict]) -> str:
         for s in visible
     )
 
-    return f"""You are an expert medical scribe generating a clinical note from a doctor-patient conversation transcript.
+    return f"""{persona}
 
-You will receive a transcript of a doctor-patient interaction (already translated into English). Convert it into a detailed, professional clinical note following the sections below.
+{context}
 
 STRICT RULES:
-- Base every statement ONLY on information explicitly present in the transcript. Do NOT infer, assume, or fabricate any clinical detail, vital sign, history, or diagnosis that was not stated.
-- If a section has no corresponding information in the transcript, write "Not discussed" or "Not documented" for that section — do not guess or leave it blank.
-- Use standard clinical terminology and formatting a physician would expect in a medical record.
-- Do not include any commentary, disclaimers, or notes about the AI process itself. Output ONLY the clinical note.
+{rules}
 
 OUTPUT FORMAT:
 {format_block}
@@ -145,8 +157,18 @@ Transcript:
 """
 
 
-def generate_soap(transcript: str, sections: list[dict] | None = None, model: str | None = None) -> OpenRouterResponse:
-    prompt = build_soap_prompt_from_sections(sections) if sections else SOAP_PROMPT
+def generate_soap(
+    transcript: str,
+    sections: list[dict] | None = None,
+    opening_persona: str | None = None,
+    transcript_context: str | None = None,
+    strict_rules: str | None = None,
+    model: str | None = None,
+) -> OpenRouterResponse:
+    if sections:
+        prompt = build_soap_prompt_from_sections(sections, opening_persona, transcript_context, strict_rules)
+    else:
+        prompt = SOAP_PROMPT
     messages = [
         {"role": "user", "content": prompt.format(transcript=transcript)}
     ]
