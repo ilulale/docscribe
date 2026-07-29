@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   getNote,
+  getReportTemplate,
   updateNote,
   signNote,
   regenerateNote,
@@ -26,31 +27,31 @@ const PROGRESS_MESSAGES = {
   completed: "Processing complete!",
 };
 
-const SECTIONS = [
+const FALLBACK_SECTIONS = [
   {
     key: "subjective",
     label: "Subjective",
-    placeholder: "Chief Complaint, HPI, PMH, Medications, Allergies...",
+    prompt_instructions: "Chief Complaint, HPI, PMH, Medications, Allergies...",
   },
   {
     key: "objective",
     label: "Objective",
-    placeholder: "Vitals, Physical Exam, Investigations...",
+    prompt_instructions: "Vitals, Physical Exam, Investigations...",
   },
   {
     key: "assessment",
     label: "Assessment",
-    placeholder: "Diagnosis, Differential Diagnosis...",
+    prompt_instructions: "Diagnosis, Differential Diagnosis...",
   },
   {
     key: "plan",
     label: "Plan",
-    placeholder: "Treatment Plan, Medications, Follow-up...",
+    prompt_instructions: "Treatment Plan, Medications, Follow-up...",
   },
   {
     key: "additional_notes",
     label: "Additional Notes",
-    placeholder: "Any other notes...",
+    prompt_instructions: "Any other notes...",
   },
 ];
 
@@ -116,6 +117,7 @@ export default function NoteEditor() {
   const [showSignConfirm, setShowSignConfirm] = useState(false);
   const [session, setSession] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [templateSections, setTemplateSections] = useState(null);
   const autoSaveRef = useRef(null);
   const pollRef = useRef(null);
   const isSigned = note?.is_signed;
@@ -139,6 +141,20 @@ export default function NoteEditor() {
     }
     load();
   }, [sessionId]);
+
+  useEffect(() => {
+    async function loadTemplate() {
+      try {
+        const data = await getReportTemplate();
+        if (data.sections?.length) {
+          setTemplateSections(data.sections);
+        }
+      } catch {
+        // ignore — use FALLBACK_SECTIONS
+      }
+    }
+    loadTemplate();
+  }, []);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -363,22 +379,25 @@ export default function NoteEditor() {
       </div>
 
       <div className="space-y-3">
-        {SECTIONS.map((s, i) => (
-          <div
-            key={s.key}
-            className="opacity-0 animate-slide-up"
-            style={{ animationDelay: `${(i + 1) * 0.04}s` }}
-          >
-            <SoapSection
-              field={s.key}
-              label={s.label}
-              placeholder={s.placeholder}
-              value={soap[s.key]}
-              onChange={handleFieldChange}
-              readOnly={isSigned}
-            />
-          </div>
-        ))}
+        {(templateSections || FALLBACK_SECTIONS)
+          .filter((s) => s.visible !== false)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .map((s, i) => (
+            <div
+              key={s.key}
+              className="opacity-0 animate-slide-up"
+              style={{ animationDelay: `${(i + 1) * 0.04}s` }}
+            >
+              <SoapSection
+                field={s.key}
+                label={s.label}
+                placeholder={s.prompt_instructions || `Enter ${s.label}...`}
+                value={soap[s.key] || ""}
+                onChange={handleFieldChange}
+                readOnly={isSigned}
+              />
+            </div>
+          ))}
       </div>
 
       {!isSigned && (
