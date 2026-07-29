@@ -44,3 +44,4 @@ backend/test.db
 compa
 docs/agents/
 *.db
+*.pdf
