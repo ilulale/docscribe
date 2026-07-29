@@ -193,10 +193,13 @@ export async function getReportTemplate() {
   return data;
 }
 
-export async function upsertReportTemplate({ sections, pdf_footer }) {
+export async function upsertReportTemplate({ sections, pdf_footer, opening_persona, transcript_context, strict_rules }) {
   const { data } = await client.post("/report-template", {
     sections,
     pdf_footer,
+    opening_persona,
+    transcript_context,
+    strict_rules,
   });
   return data;
 }

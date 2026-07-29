@@ -62,7 +62,8 @@ def _parse_soap_json(soap_text: str, sections: list[dict] | None = None) -> dict
         if not stripped:
             continue
 
-        upper = stripped.upper()
+        cleaned = stripped.lstrip("-* ").strip()
+        upper = cleaned.upper()
         matched_key = None
         for header, key in section_map.items():
             if upper == header or upper.startswith(header + ":"):
