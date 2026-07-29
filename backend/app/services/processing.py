@@ -80,7 +80,13 @@ def _parse_soap_json(soap_text: str, sections: list[dict] | None = None) -> dict
         elif current_section is not None:
             sections_result[current_section].append(stripped)
 
-    return {k: "\n".join(v) for k, v in sections_result.items()}
+    result = {k: "\n".join(v) for k, v in sections_result.items()}
+
+    # Store section labels so the frontend can display human-readable names
+    if sections:
+        result["_labels"] = {s["key"]: s["label"] for s in sections if s.get("key") and s.get("label")}
+
+    return result
 
 
 @celery_app.task(name="process_session", bind=True, max_retries=1)

@@ -370,10 +370,12 @@ export default function NoteEditor() {
 
       <div className="space-y-3">
         {(Object.keys(soap).length > 0
-          ? Object.keys(soap).map((key) => ({
-              key,
-              label: keyToLabel(key),
-            }))
+          ? Object.keys(soap)
+              .filter((key) => key !== "_labels")
+              .map((key) => ({
+                key,
+                label: soap._labels?.[key] || keyToLabel(key),
+              }))
           : FALLBACK_SECTIONS
         ).map((s, i) => (
           <div
